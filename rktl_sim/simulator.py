@@ -121,7 +121,7 @@ class Ball:
     :param impulse: Starting impulse applied to the ball at object creation (defaults to no impulse)
     :type imlpulse: class: `pymunk.Vec2d`
     """
-    def __init__(self, x, y, space, impulse= pymunk.Vec2d(0,0)):
+    def __init__(self, x:float, y:float, space:pymunk.Space, impulse:pymunk.Vec2d=pymunk.Vec2d(0,0)):
         """Constructor method"""
         self.inertia = pymunk.moment_for_circle(BALL_MASS, 0, BALL_RADIUS)
         self.body = pymunk.Body(BALL_MASS, self.inertia)
@@ -150,8 +150,10 @@ class Ball:
         return self.body.position
 
 class Game:
-    """Gamestate object that handles simulation of physics."""
-    def __init__(self):
+    """Gamestate object that handles simulation of physics.
+    :param walls: Toggles the walls of the field on or off, no walls also disables goal checks
+    :type walls: bool"""
+    def __init__(self, walls:bool=False):
         """Constructor"""
         pygame.init()
         self.screen = pygame.display.set_mode((FIELD_WIDTH + GOAL_DEPTH, FIELD_HEIGHT))
@@ -160,6 +162,7 @@ class Game:
         self.leftscore = 0
         self.rightscore = 0
         self.ticks = 60
+        self.walls = walls
         self.exit = False
         self.gameSpace = pymunk.Space()
     
@@ -200,26 +203,27 @@ class Game:
         self.addObjects()
         
         # Walls in Field
-        static_lines = [
-            pymunk.Segment(self.gameSpace.static_body, (GOAL_DEPTH, 0.0), (FIELD_WIDTH, 0.0), 0.0),
-            pymunk.Segment(self.gameSpace.static_body, (FIELD_WIDTH, FIELD_HEIGHT), (GOAL_DEPTH, FIELD_HEIGHT), 0.0),
+        if self.walls:
+            static_lines = [
+                pymunk.Segment(self.gameSpace.static_body, (GOAL_DEPTH, 0.0), (FIELD_WIDTH, 0.0), 0.0),
+                pymunk.Segment(self.gameSpace.static_body, (FIELD_WIDTH, FIELD_HEIGHT), (GOAL_DEPTH, FIELD_HEIGHT), 0.0),
 
-            pymunk.Segment(self.gameSpace.static_body, (FIELD_WIDTH, 0.0), (FIELD_WIDTH, SIDE_WALL), 0.0),
-            pymunk.Segment(self.gameSpace.static_body, (FIELD_WIDTH, SIDE_WALL), (FIELD_WIDTH + GOAL_DEPTH, SIDE_WALL), 0.0),
-            pymunk.Segment(self.gameSpace.static_body, (FIELD_WIDTH + GOAL_DEPTH, SIDE_WALL), (FIELD_WIDTH + GOAL_DEPTH, GOAL_HEIGHT + SIDE_WALL), 0.0),
-            pymunk.Segment(self.gameSpace.static_body, (FIELD_WIDTH, GOAL_HEIGHT + SIDE_WALL), (FIELD_WIDTH + GOAL_DEPTH, SIDE_WALL + GOAL_HEIGHT), 0.0),
-            pymunk.Segment(self.gameSpace.static_body, (FIELD_WIDTH, GOAL_HEIGHT + SIDE_WALL), (FIELD_WIDTH, FIELD_HEIGHT), 0.0),
+                pymunk.Segment(self.gameSpace.static_body, (FIELD_WIDTH, 0.0), (FIELD_WIDTH, SIDE_WALL), 0.0),
+                pymunk.Segment(self.gameSpace.static_body, (FIELD_WIDTH, SIDE_WALL), (FIELD_WIDTH + GOAL_DEPTH, SIDE_WALL), 0.0),
+                pymunk.Segment(self.gameSpace.static_body, (FIELD_WIDTH + GOAL_DEPTH, SIDE_WALL), (FIELD_WIDTH + GOAL_DEPTH, GOAL_HEIGHT + SIDE_WALL), 0.0),
+                pymunk.Segment(self.gameSpace.static_body, (FIELD_WIDTH, GOAL_HEIGHT + SIDE_WALL), (FIELD_WIDTH + GOAL_DEPTH, SIDE_WALL + GOAL_HEIGHT), 0.0),
+                pymunk.Segment(self.gameSpace.static_body, (FIELD_WIDTH, GOAL_HEIGHT + SIDE_WALL), (FIELD_WIDTH, FIELD_HEIGHT), 0.0),
 
-            pymunk.Segment(self.gameSpace.static_body, (GOAL_DEPTH, SIDE_WALL), (GOAL_DEPTH, 0.0), 0.0),
-            pymunk.Segment(self.gameSpace.static_body, (GOAL_DEPTH, SIDE_WALL), (0, SIDE_WALL), 0.0),
-            pymunk.Segment(self.gameSpace.static_body, (0, SIDE_WALL), (0, GOAL_HEIGHT + SIDE_WALL), 0.0),
-            pymunk.Segment(self.gameSpace.static_body, (GOAL_DEPTH, GOAL_HEIGHT + SIDE_WALL), (0, SIDE_WALL + GOAL_HEIGHT), 0.0),
-            pymunk.Segment(self.gameSpace.static_body, (GOAL_DEPTH, GOAL_HEIGHT + SIDE_WALL), (GOAL_DEPTH, FIELD_HEIGHT), 0.0),
-        ]
-        for l in static_lines:
-            l.friction = FIELD_FRICTION
-            l.elasticity = FIELD_ELASTICITY
-        self.gameSpace.add(*static_lines)
+                pymunk.Segment(self.gameSpace.static_body, (GOAL_DEPTH, SIDE_WALL), (GOAL_DEPTH, 0.0), 0.0),
+                pymunk.Segment(self.gameSpace.static_body, (GOAL_DEPTH, SIDE_WALL), (0, SIDE_WALL), 0.0),
+                pymunk.Segment(self.gameSpace.static_body, (0, SIDE_WALL), (0, GOAL_HEIGHT + SIDE_WALL), 0.0),
+                pymunk.Segment(self.gameSpace.static_body, (GOAL_DEPTH, GOAL_HEIGHT + SIDE_WALL), (0, SIDE_WALL + GOAL_HEIGHT), 0.0),
+                pymunk.Segment(self.gameSpace.static_body, (GOAL_DEPTH, GOAL_HEIGHT + SIDE_WALL), (GOAL_DEPTH, FIELD_HEIGHT), 0.0),
+            ]
+            for l in static_lines:
+                l.friction = FIELD_FRICTION
+                l.elasticity = FIELD_ELASTICITY
+            self.gameSpace.add(*static_lines)
 
         while not self.exit:
             self.dt = self.clock.get_time() / 1000
@@ -236,7 +240,8 @@ class Game:
             for c in self.cars:
                 c.update(pressed)
             self.ball.decelerate()
-            self.checkGoal(self.ball, GOAL_DEPTH, FIELD_WIDTH, SIDE_WALL, SIDE_WALL + GOAL_HEIGHT)
+            if self.walls:
+                self.checkGoal(self.ball, GOAL_DEPTH, FIELD_WIDTH, SIDE_WALL, SIDE_WALL + GOAL_HEIGHT)
 
             # Drawing
             print("\rLeft: ", self.leftscore, " Right: ", self.rightscore,end="")
