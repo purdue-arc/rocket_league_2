@@ -46,7 +46,13 @@ class Car:
     :param angle: Starting rotational angle for the car (0 degrees is East)
     :type angle: float
     """
-    def __init__(self, x, y, space, angle=0):
+    def __init__(
+        self,
+        x:float,
+        y:float,
+        space:pymunk.Space,
+        angle=0
+    ):
         """Constructor method"""
         self.body = pymunk.Body(CAR_MASS, pymunk.moment_for_box(CAR_MASS, CAR_SIZE))
         self.body.position = (x, y)
@@ -62,7 +68,7 @@ class Car:
         self.steering = 0.0 # Rate of steering
         self.reverse = 1 # Stores which direction car moves, 1 for forwards and -1 for backwards
 
-    def update(self, keys):
+    def update(self, keys:pygame.key.ScancodeWrapper):
         """Calculates the needed motion of the car class called. Going to update later.
         :param keys: Contains :class: 'pygame.key.ScancodeWrapper' class to search for key inputs
         :type keys: class: 'pygame.key.ScancodeWrapper'
@@ -121,7 +127,13 @@ class Ball:
     :param impulse: Starting impulse applied to the ball at object creation (defaults to no impulse)
     :type imlpulse: class: `pymunk.Vec2d`
     """
-    def __init__(self, x:float, y:float, space:pymunk.Space, impulse:pymunk.Vec2d=pymunk.Vec2d(0,0)):
+    def __init__(
+        self,
+        x:float,
+        y:float,
+        space:pymunk.Space,
+        impulse:pymunk.Vec2d=pymunk.Vec2d(0,0)
+    ):
         """Constructor method"""
         self.inertia = pymunk.moment_for_circle(BALL_MASS, 0, BALL_RADIUS)
         self.body = pymunk.Body(BALL_MASS, self.inertia)
@@ -153,7 +165,12 @@ class Game:
     """Gamestate object that handles simulation of physics.
     :param walls: Toggles the walls of the field on or off, no walls also disables goal checks
     :type walls: bool"""
-    def __init__(self, walls:bool=False):
+    def __init__(
+        self,
+        cars:list = [],
+        walls:bool = False,
+        ballPosition:tuple[float, float] = BALL_POS
+    ):
         """Constructor"""
         pygame.init()
         self.screen = pygame.display.set_mode((FIELD_WIDTH + GOAL_DEPTH, FIELD_HEIGHT))
@@ -163,10 +180,18 @@ class Game:
         self.rightscore = 0
         self.ticks = 60
         self.walls = walls
+        self.ballPosition = ballPosition
         self.exit = False
         self.gameSpace = pymunk.Space()
     
-    def checkGoal(self, ball, leftgoal, rightgoal, topgoal, botgoal):
+    def checkGoal(
+        self,
+        ball:Ball,
+        leftgoal:float,
+        rightgoal:float,
+        topgoal:float,
+        botgoal:float
+    ):
         """Checks to see if ball position is in a goal, then resets the field
         :param ball: Contains the :class:`rktl_sim.ball` class that will be checked into the 
         :param leftgoal:
@@ -192,7 +217,7 @@ class Game:
 
     def addObjects(self):
         """Adds new ball and car objects to the field"""
-        self.ball = Ball(BALL_POS[0], BALL_POS[1], self.gameSpace)
+        self.ball = Ball(self.ballPosition[0], self.ballPosition[1], self.gameSpace)
         self.cars = [
             Car((FIELD_WIDTH + GOAL_DEPTH) / 3, FIELD_HEIGHT / 2, self.gameSpace),
             Car(2 * (FIELD_WIDTH + GOAL_DEPTH) / 3, FIELD_HEIGHT / 2+50, self.gameSpace, 180)
