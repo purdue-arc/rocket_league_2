@@ -85,7 +85,6 @@ class Car:
                 self.reverse = 1
               
         elif keys[pygame.K_DOWN]:  # Move backward
-            #self.body.velocity -= self.forward_direction
             if self.reverse == -1:
                 self.body.apply_impulse_at_local_point(-self.impulse)
             else:
@@ -154,7 +153,7 @@ class Ball:
         self.body.velocity = (self.body.velocity.length - BALL_DECELERATION) * self.body.velocity.normalized()
         #print("\rPos:{:0.2f}".format(self.body.position[0]),end="")
     
-    def getPos(self):
+    def getPos(self) -> pymunk.vec2d.Vec2d:
         """Returns the ball's current x and y position
         :return: List of positional coordinates in :class:`pymunk.vec2d.Vec2d` format
         :rtype: :class:`pymunk.vec2d.Vec2d`
@@ -163,11 +162,12 @@ class Ball:
 
 class Game:
     """Gamestate object that handles simulation of physics.
+    :param carlist: 
     :param walls: Toggles the walls of the field on or off, no walls also disables goal checks
     :type walls: bool"""
     def __init__(
         self,
-        cars:list = [],
+        carlist:list = [[(FIELD_WIDTH + GOAL_DEPTH) / 3,FIELD_HEIGHT / 2],[2 * (FIELD_WIDTH + GOAL_DEPTH) / 3,FIELD_HEIGHT / 2,180]],
         walls:bool = False,
         ballPosition:tuple[float, float] = BALL_POS
     ):
@@ -181,6 +181,8 @@ class Game:
         self.ticks = 60
         self.walls = walls
         self.ballPosition = ballPosition
+        self.carlist = carlist
+        self.cars = []
         self.exit = False
         self.gameSpace = pymunk.Space()
     
@@ -218,10 +220,15 @@ class Game:
     def addObjects(self):
         """Adds new ball and car objects to the field"""
         self.ball = Ball(self.ballPosition[0], self.ballPosition[1], self.gameSpace)
-        self.cars = [
-            Car((FIELD_WIDTH + GOAL_DEPTH) / 3, FIELD_HEIGHT / 2, self.gameSpace),
-            Car(2 * (FIELD_WIDTH + GOAL_DEPTH) / 3, FIELD_HEIGHT / 2+50, self.gameSpace, 180)
-        ]
+        for i in self.carlist:
+            if len(i) == 3:
+                self.cars.append(Car(i[0],i[1],self.gameSpace,i[2]))
+            else:
+                self.cars.append(Car(i[0],i[1],self.gameSpace))
+        # self.cars = [
+        #     Car((FIELD_WIDTH + GOAL_DEPTH) / 3, FIELD_HEIGHT / 2, self.gameSpace),
+        #     Car(2 * (FIELD_WIDTH + GOAL_DEPTH) / 3, FIELD_HEIGHT / 2+50, self.gameSpace, 180)
+        # ]
 
     def run(self):
         """Main logic function to keep track of gamestate."""
@@ -278,7 +285,6 @@ class Game:
 
             self.clock.tick(self.ticks)
         pygame.quit()
-
 
 if __name__ == '__main__':
     game = Game()
