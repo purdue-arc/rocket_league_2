@@ -3,6 +3,8 @@ import pymunk.pygame_util
 import pymunk
 from math import sin, radians, cos
 
+import time
+
 #Car Specs
 CAR_SIZE = (16.5, 8.5) # (Length, Width)
 CAR_MASS = 5
@@ -68,14 +70,14 @@ class Car:
         self.steering = 0.0 # Rate of steering
         self.reverse = 1 # Stores which direction car moves, 1 for forwards and -1 for backwards
 
-    def update(self, keys:pygame.key.ScancodeWrapper):
-        """Calculates the needed motion of the car class called. Going to update later.
+    def keyUpdate(self, keys:pygame.key.ScancodeWrapper):
+        """Calculates the needed motion of the car class called. Takes user input for controls
         :param keys: Contains :class: 'pygame.key.ScancodeWrapper' class to search for key inputs
         :type keys: class: 'pygame.key.ScancodeWrapper'
         """
         self.forward_direction = pymunk.Vec2d(cos(self.body.angle), sin(self.body.angle))
-        
         self.impulse = pymunk.Vec2d(1, 0) * CAR_SPEED
+
         if keys[pygame.K_UP]:  # Move forward
             if self.reverse == 1:
                 self.body.apply_impulse_at_local_point(self.impulse)
@@ -101,7 +103,7 @@ class Car:
             #Simulates deceleration when no movement command is given
             self.body.velocity = (self.body.velocity.length - FREE_DECELERATION) * self.forward_direction * self.reverse
         
-        # Turning the car
+        #Turning the car
         self.turning_radius = CAR_SIZE[0] / sin(radians(CAR_TURN))
         if keys[pygame.K_LEFT]:  # Turn left
             self.body.angular_velocity = self.body.velocity.length / -self.turning_radius * self.reverse
@@ -115,6 +117,56 @@ class Car:
         #Prints current velocity
         #print("\rVelocity:{:0.2f}".format(self.body.velocity.length),end="")
 
+    def update(self, controls:tuple[float,float]):
+        """Calculates the needed motion of the car class called.
+        :param controls: First float controls forward throttle percentage, ranging from 1 to -1. Second float controls turn angle percentage, positive is right and negative it left. Ranges from 1 to -1.
+        :type controls: tuple[float,float]"""
+        self.forward_direction = pymunk.Vec2d(cos(self.body.angle), sin(self.body.angle))
+        
+        self.impulse = pymunk.Vec2d(1, 0) * CAR_SPEED
+        if controls[0] > 0:
+            if self.reverse == 1:
+                self.body.apply_impulse_at_local_point(self.impulse * controls[0])
+            else:
+                self.body.apply_impulse_at_local_point(self.impulse * BRAKE_SPEED)
+            if self.body.velocity.length < 5:
+                self.reverse = 1
+
+        elif controls[0] < 0:  # Move backward
+            if self.reverse == -1:
+                self.body.apply_impulse_at_local_point(self.impulse * controls[0])
+            else:
+                self.body.apply_impulse_at_local_point(-self.impulse * BRAKE_SPEED)
+            if self.body.velocity.length < 5:
+                self.reverse = -1
+
+        else:
+            self.body.velocity = (self.body.velocity.length - FREE_DECELERATION) * self.forward_direction * self.reverse
+
+        self.turning_radius = CAR_SIZE[0] / sin(radians(CAR_TURN))
+
+        if controls[1] < 0:  # Turn left
+            self.body.angular_velocity = self.body.velocity.length / self.turning_radius * controls[1] * self.reverse
+        elif controls[1] > 0:  # Turn right
+            self.body.angular_velocity = self.body.velocity.length / self.turning_radius * controls[1] * self.reverse
+        else:
+            self.body.angular_velocity = 0  # Stop turning when no key is pressed
+        
+        # Reset drift: Set velocity to only move in the direction of the car's facing angle
+        self.body.velocity = self.forward_direction * self.reverse * min(self.body.velocity.length, MAX_SPEED)
+
+    def getPos(self) -> pymunk.vec2d.Vec2d:
+        """Returns the ball's current x and y position
+        :return: List of positional coordinates in :class:`pymunk.vec2d.Vec2d` format
+        :rtype: :class:`pymunk.vec2d.Vec2d`"""
+        return self.body.position
+    
+    def getVelocity(self) -> pymunk.vec2d.Vec2d:
+        """Returns the ball's current velocity
+        :return: Current velocity in the :class:`pymunk.vec2d.Vec2d` format
+        :rtype: :class:`pymunk.vec2d.Vec2d`"""
+        return self.body.velocity
+
 class Ball:
     """Class used to define the soccer ball
     :param x: x coordinate for the starting position of the ball
@@ -124,8 +176,7 @@ class Ball:
     :param space: Contains the :class: `pymunk.space` class object for calculating physical interactions
     :type space: class: `pymunk.space`
     :param impulse: Starting impulse applied to the ball at object creation (defaults to no impulse)
-    :type imlpulse: class: `pymunk.Vec2d`
-    """
+    :type imlpulse: class: `pymunk.Vec2d`"""
     def __init__(
         self,
         x:float,
@@ -151,24 +202,26 @@ class Ball:
     def decelerate(self):
         """Gradually reduces the velocity of the ball to simulate friction."""
         self.body.velocity = (self.body.velocity.length - BALL_DECELERATION) * self.body.velocity.normalized()
-        #print("\rPos:{:0.2f}".format(self.body.position[0]),end="")
     
     def getPos(self) -> pymunk.vec2d.Vec2d:
         """Returns the ball's current x and y position
         :return: List of positional coordinates in :class:`pymunk.vec2d.Vec2d` format
-        :rtype: :class:`pymunk.vec2d.Vec2d`
-        """
+        :rtype: :class:`pymunk.vec2d.Vec2d`"""
         return self.body.position
+    
+    def getVelocity(self) -> pymunk.vec2d.Vec2d:
+        """Returns the ball's current velocity
+        :return: Current velocity in the :class:`pymunk.vec2d.Vec2d` format
+        :rtype: :class:`pymunk.vec2d.Vec2d`"""
+        return self.body.velocity
 
 class Game:
     """Gamestate object that handles simulation of physics.
     :param carlist: 
-    :param walls: Toggles the walls of the field on or off, no walls also disables goal checks
-    :type walls: bool"""
+    :type carlist: [[float,float,float]]"""
     def __init__(
         self,
-        carlist:list = [[(FIELD_WIDTH + GOAL_DEPTH) / 3,FIELD_HEIGHT / 2],[2 * (FIELD_WIDTH + GOAL_DEPTH) / 3,FIELD_HEIGHT / 2,180]],
-        walls:bool = False,
+        carlist:list[tuple[float,float,float]] = [[(FIELD_WIDTH + GOAL_DEPTH) / 3,FIELD_HEIGHT / 2],[2 * (FIELD_WIDTH + GOAL_DEPTH) / 3,FIELD_HEIGHT / 2,180]],
         ballPosition:tuple[float, float] = BALL_POS
     ):
         """Constructor"""
@@ -179,7 +232,6 @@ class Game:
         self.leftscore = 0
         self.rightscore = 0
         self.ticks = 60
-        self.walls = walls
         self.ballPosition = ballPosition
         self.carlist = carlist
         self.cars = []
@@ -199,8 +251,7 @@ class Game:
         :param leftgoal:
         :param rightgoal:
         :param topgoal:
-        :param botgoal:
-        """
+        :param botgoal:"""
         if (ball.getPos()[0] < leftgoal):
             if (ball.getPos()[1] > topgoal) and (ball.getPos()[1] < botgoal):
                 self.rightscore += 1
@@ -230,12 +281,16 @@ class Game:
         #     Car(2 * (FIELD_WIDTH + GOAL_DEPTH) / 3, FIELD_HEIGHT / 2+50, self.gameSpace, 180)
         # ]
 
-    def run(self):
-        """Main logic function to keep track of gamestate."""
+    def run(self, visuals:bool=True, walls:bool=True):
+        """Main logic function to keep track of gamestate.
+        :param visuals: Toggles rendering of the simulation
+        :type visuals: bool
+        :param walls: Toggles the walls of the field on or off, no walls also disables goal checks
+        :type walls: bool"""
         self.addObjects()
         
         # Walls in Field
-        if self.walls:
+        if walls:
             static_lines = [
                 pymunk.Segment(self.gameSpace.static_body, (GOAL_DEPTH, 0.0), (FIELD_WIDTH, 0.0), 0.0),
                 pymunk.Segment(self.gameSpace.static_body, (FIELD_WIDTH, FIELD_HEIGHT), (GOAL_DEPTH, FIELD_HEIGHT), 0.0),
@@ -266,26 +321,59 @@ class Game:
                     self.exit = True
 
             # User input
-            pressed = pygame.key.get_pressed()
+            self.pressed = pygame.key.get_pressed()
 
             # Logic
             for c in self.cars:
-                c.update(pressed)
+                c.keyUpdate(self.pressed)
             self.ball.decelerate()
-            if self.walls:
+            if walls:
                 self.checkGoal(self.ball, GOAL_DEPTH, FIELD_WIDTH, SIDE_WALL, SIDE_WALL + GOAL_HEIGHT)
 
             # Drawing
             print("\rLeft: ", self.leftscore, " Right: ", self.rightscore,end="")
-            pygame.display.set_caption("fps: " + str(self.clock.get_fps()))
-            self.screen.fill(pygame.Color("white"))
-            self.gameSpace.debug_draw(self.draw_options)
-            pygame.display.update()
+            if visuals:
+                pygame.display.set_caption("fps: " + str(self.clock.get_fps()))
+                self.screen.fill(pygame.Color("white"))
+                self.gameSpace.debug_draw(self.draw_options)
+                pygame.display.update()
             self.gameSpace.step(self.dt)
 
             self.clock.tick(self.ticks)
         pygame.quit()
 
+    def stepRun(self, steps:int=10):
+        """Main logic function to keep track of gamestate. Steps 0.1 seconds with each SPACE key press.
+        :param steps: Number of steps taken per 0.1 seconds when SPACE key is pressed
+        :type steps: int
+        """
+        self.ball = Ball(self.ballPosition[0], self.ballPosition[1], self.gameSpace, pymunk.vec2d.Vec2d(10,0))
+        self.cars.append(Car(2 * (FIELD_WIDTH + GOAL_DEPTH) / 3, FIELD_HEIGHT / 2, self.gameSpace, 180))
+
+        self.screen.fill(pygame.Color("white"))
+        self.gameSpace.debug_draw(self.draw_options)
+        pygame.display.update()
+        while not self.exit:
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    self.exit = True
+            # User input
+            self.pressed = pygame.key.get_pressed()
+
+            if self.pressed[pygame.K_SPACE]:
+                for _ in range(steps):
+                    self.cars[0].update([1,0])
+                    self.screen.fill(pygame.Color("white"))
+                    self.gameSpace.debug_draw(self.draw_options)
+                    pygame.display.update()
+                    self.gameSpace.step(0.1/steps)
+                #print(self.cars[0].body.velocity)
+            time.sleep(0.1)
+            
+            
+
+
 if __name__ == '__main__':
     game = Game()
     game.run()
+    #game.stepRun()
