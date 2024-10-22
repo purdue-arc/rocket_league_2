@@ -432,9 +432,6 @@ class Game:
                     self.gameSpace.step(0.1/steps)
                 #print(self.cars[0].body.velocity)
             pygame.time.wait(100)
-            
-            
-
 
 if __name__ == '__main__':
     game = Game()
