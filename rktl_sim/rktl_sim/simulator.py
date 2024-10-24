@@ -263,6 +263,7 @@ class Game:
         """Removes ball and car objects from the field."""
         for c in self.cars:
             self.gameSpace.remove(c.body, c.shape)
+        self.cars = []
         self.gameSpace.remove(self.ball.body, self.ball.shape)
         self.addObjects()
 
