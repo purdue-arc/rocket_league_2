@@ -1,7 +1,8 @@
+from math import cos, radians, sin
+
 import pygame
-import pymunk.pygame_util
 import pymunk
-from math import sin, radians, cos
+import pymunk.pygame_util
 
 #Car Specs
 CAR_SIZE = (16.5, 8.5) # (Length, Width)
@@ -51,7 +52,7 @@ class Car:
         x:float,
         y:float,
         space:pymunk.Space,
-        angle=0
+        angle:float=0
     ):
         """Constructor method"""
         self.body = pymunk.Body(CAR_MASS, pymunk.moment_for_box(CAR_MASS, CAR_SIZE))
@@ -219,7 +220,10 @@ class Game:
     :type carlist: [[float,float,float]]"""
     def __init__(
         self,
-        carlist:list[tuple[float,float,float]] = [[(FIELD_WIDTH + GOAL_DEPTH) / 3,FIELD_HEIGHT / 2],[2 * (FIELD_WIDTH + GOAL_DEPTH) / 3,FIELD_HEIGHT / 2,180]],
+        carlist:list[tuple[float,float,float] | tuple[float, float]] = [(
+            (FIELD_WIDTH + GOAL_DEPTH) / 3, FIELD_HEIGHT / 2),
+            (2 * (FIELD_WIDTH + GOAL_DEPTH) / 3, FIELD_HEIGHT / 2, 180)
+            ],
         ballPosition:tuple[float, float] = BALL_POS
     ):
         """Constructor"""
@@ -272,7 +276,7 @@ class Game:
         self.ball = Ball(self.ballPosition[0], self.ballPosition[1], self.gameSpace)
         for i in self.carlist:
             if len(i) == 3:
-                self.cars.append(Car(i[0],i[1],self.gameSpace,i[2]))
+                self.cars.append(Car(i[0],i[1],self.gameSpace, i[2]))
             else:
                 self.cars.append(Car(i[0],i[1],self.gameSpace))
         # self.cars = [
