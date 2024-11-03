@@ -3,15 +3,10 @@ import pymunk.pygame_util
 import pymunk
 from math import sin, radians, cos
 
-#Car Specs
-CAR_SIZE = (16.5, 8.5) # (Length, Width)
-CAR_MASS = 5
-CAR_SPEED = 5  # Impulse applied for forward/backward movement
-CAR_TURN = 30  # Angular velocity for car turning
-BRAKE_SPEED = 5  # Multiplier of CAR_SPEED for braking force
-FREE_DECELERATION = 0.5  # Rate velocity decreases with no input
-CAR_FRICTION = 0.5
-CAR_COLOR = pygame.Color("green")
+import rclpy
+#import std_msgs
+import std_msgs.msg
+#from std_msgs.msg import String
 
 #Field Specs
 FIELD_WIDTH = 426.72
@@ -22,6 +17,17 @@ SIDE_WALL = (FIELD_HEIGHT - GOAL_HEIGHT) / 2
 FIELD_FRICTION = 0.3
 FIELD_ELASTICITY = 0.5
 FIELD_COLOR = pygame.Color("white")
+
+#Car Specs
+CAR_SIZE = (16.5, 8.5) # (Length, Width)
+CAR_MASS = 5
+CAR_SPEED = 5  # Impulse applied for forward/backward movement
+CAR_TURN = 30  # Angular velocity for car turning
+BRAKE_SPEED = 5  # Multiplier of CAR_SPEED for braking force
+FREE_DECELERATION = 0.5  # Rate velocity decreases with no input
+CAR_FRICTION = 0.5
+CAR_COLOR = pygame.Color("green")
+CAR_POS = [[(FIELD_WIDTH + GOAL_DEPTH) / 3,FIELD_HEIGHT / 2],[2 * (FIELD_WIDTH + GOAL_DEPTH) / 3,FIELD_HEIGHT / 2,180]]
 
 #Ball Specs
 BALL_MASS = 0.1
@@ -219,7 +225,7 @@ class Game:
     :type carlist: [[float,float,float]]"""
     def __init__(
         self,
-        carlist:list[tuple[float,float,float]] = [[(FIELD_WIDTH + GOAL_DEPTH) / 3,FIELD_HEIGHT / 2],[2 * (FIELD_WIDTH + GOAL_DEPTH) / 3,FIELD_HEIGHT / 2,180]],
+        carStartList:list[tuple[float,float,float]] = CAR_POS,
         ballPosition:tuple[float, float] = BALL_POS
     ):
         """Constructor"""
@@ -227,13 +233,16 @@ class Game:
         self.screen = pygame.display.set_mode((FIELD_WIDTH + GOAL_DEPTH, FIELD_HEIGHT))
         self.draw_options = pymunk.pygame_util.DrawOptions(self.screen)
         self.clock = pygame.time.Clock()
+
         self.leftscore = 0
         self.rightscore = 0
         self.ticks = 60
         self.ballPosition = ballPosition
-        self.carlist = carlist
+        self.carStartList = carStartList
         self.cars = []
+        self.inputs = []
         self.exit = False
+
         self.gameSpace = pymunk.Space()
     
     def checkGoal(
@@ -263,28 +272,45 @@ class Game:
         """Removes ball and car objects from the field."""
         for c in self.cars:
             self.gameSpace.remove(c.body, c.shape)
+        self.cars = []
         self.gameSpace.remove(self.ball.body, self.ball.shape)
         self.addObjects()
 
     def addObjects(self):
         """Adds new ball and car objects to the field"""
         self.ball = Ball(self.ballPosition[0], self.ballPosition[1], self.gameSpace)
-        for i in self.carlist:
+        for i in self.carStartList:
             if len(i) == 3:
                 self.cars.append(Car(i[0],i[1],self.gameSpace,i[2]))
             else:
                 self.cars.append(Car(i[0],i[1],self.gameSpace))
-        # self.cars = [
-        #     Car((FIELD_WIDTH + GOAL_DEPTH) / 3, FIELD_HEIGHT / 2, self.gameSpace),
-        #     Car(2 * (FIELD_WIDTH + GOAL_DEPTH) / 3, FIELD_HEIGHT / 2+50, self.gameSpace, 180)
-        # ]
+    
+    def updateObjects(self, walls:bool, useKeys:bool):
+        if useKeys:
+            self.pressed = pygame.key.get_pressed()
+            for c in self.cars:
+                c.keyUpdate(self.pressed)
+        else:
+            for i, c in enumerate(self.cars):
+                try:
+                    c.update(self.inputs[i])
+                except:
+                    c.update([0,0])
+        self.ball.decelerate()
+        if walls:
+            self.checkGoal(self.ball, GOAL_DEPTH, FIELD_WIDTH, SIDE_WALL, SIDE_WALL + GOAL_HEIGHT)
 
-    def run(self, visualizer:bool=True, walls:bool=True):
+    def run(self, visualizer:bool=False, walls:bool=False, useKeys:bool=False):
         """Main logic function to keep track of gamestate. Takes input from ros messages
         :param visualizer: Toggles rendering of the simulation. Significantly reduces sim performance when rendered for remote client
         :type visualizer: bool
         :param walls: Toggles the walls of the field on or off, no walls also disables goal checks
         :type walls: bool"""
+        rclpy.init()
+        self.node = rclpy.create_node("sim_data")
+        self.node.create_subscription(std_msgs.msg.MultiArrayDimension, "car_input_array", lambda msg: setattr(self.inputs, msg),10)
+        self.pubisher = self.node.create_publisher(std_msgs.msg.MultiArrayDimension, 'field_state', 10)
+
         self.addObjects()
         
         # Walls in Field
@@ -319,77 +345,15 @@ class Game:
                     self.exit = True
 
             # User input
-            self.inputs=[]
+            self.updateObjects(walls, useKeys)
+            # self.inputs=[]
 
-            # Logic
-            for c in self.cars:
-                c.update(self.inputs)
-            self.ball.decelerate()
-            if walls:
-                self.checkGoal(self.ball, GOAL_DEPTH, FIELD_WIDTH, SIDE_WALL, SIDE_WALL + GOAL_HEIGHT)
-
-            # Drawing
-            print("\rLeft: ", self.leftscore, " Right: ", self.rightscore,end="")
-            if visualizer:
-                pygame.display.set_caption("fps: " + "{:.2f}".format(self.clock.get_fps()))
-                self.screen.fill(pygame.Color("white"))
-                self.gameSpace.debug_draw(self.draw_options)
-                pygame.display.update()
-            else:
-                print(" | fps: " + "{:.2f}".format(self.clock.get_fps()),end="")
-
-            self.gameSpace.step(self.dt)
-            self.clock.tick(self.ticks)
-        pygame.quit()
-
-    def keyRun(self, visualizer:bool=True, walls:bool=True):
-        """Main logic function to keep track of gamestate. Takes input from user key presses.
-        :param visualizer: Toggles rendering of the simulation. Significantly reduces sim performance when rendered for remote client
-        :type visualizer: bool
-        :param walls: Toggles the walls of the field on or off, no walls also disables goal checks
-        :type walls: bool"""
-        self.addObjects()
-        
-        # Walls in Field
-        if walls:
-            self.static_lines = [
-                pymunk.Segment(self.gameSpace.static_body, (GOAL_DEPTH, 0.0), (FIELD_WIDTH, 0.0), 0.0),
-                pymunk.Segment(self.gameSpace.static_body, (FIELD_WIDTH, FIELD_HEIGHT), (GOAL_DEPTH, FIELD_HEIGHT), 0.0),
-
-                pymunk.Segment(self.gameSpace.static_body, (FIELD_WIDTH, 0.0), (FIELD_WIDTH, SIDE_WALL), 0.0),
-                pymunk.Segment(self.gameSpace.static_body, (FIELD_WIDTH, SIDE_WALL), (FIELD_WIDTH + GOAL_DEPTH, SIDE_WALL), 0.0),
-                pymunk.Segment(self.gameSpace.static_body, (FIELD_WIDTH + GOAL_DEPTH, SIDE_WALL), (FIELD_WIDTH + GOAL_DEPTH, GOAL_HEIGHT + SIDE_WALL), 0.0),
-                pymunk.Segment(self.gameSpace.static_body, (FIELD_WIDTH, GOAL_HEIGHT + SIDE_WALL), (FIELD_WIDTH + GOAL_DEPTH, SIDE_WALL + GOAL_HEIGHT), 0.0),
-                pymunk.Segment(self.gameSpace.static_body, (FIELD_WIDTH, GOAL_HEIGHT + SIDE_WALL), (FIELD_WIDTH, FIELD_HEIGHT), 0.0),
-
-                pymunk.Segment(self.gameSpace.static_body, (GOAL_DEPTH, SIDE_WALL), (GOAL_DEPTH, 0.0), 0.0),
-                pymunk.Segment(self.gameSpace.static_body, (GOAL_DEPTH, SIDE_WALL), (0, SIDE_WALL), 0.0),
-                pymunk.Segment(self.gameSpace.static_body, (0, SIDE_WALL), (0, GOAL_HEIGHT + SIDE_WALL), 0.0),
-                pymunk.Segment(self.gameSpace.static_body, (GOAL_DEPTH, GOAL_HEIGHT + SIDE_WALL), (0, SIDE_WALL + GOAL_HEIGHT), 0.0),
-                pymunk.Segment(self.gameSpace.static_body, (GOAL_DEPTH, GOAL_HEIGHT + SIDE_WALL), (GOAL_DEPTH, FIELD_HEIGHT), 0.0),
-            ]
-            for l in self.static_lines:
-                l.friction = FIELD_FRICTION
-                l.elasticity = FIELD_ELASTICITY
-            self.gameSpace.add(*self.static_lines)
-
-        while not self.exit:
-            self.dt = self.clock.get_time() / 1000
-
-            # Quit event
-            for event in pygame.event.get():
-                if event.type == pygame.QUIT:
-                    self.exit = True
-
-            # User input
-            self.pressed = pygame.key.get_pressed()
-
-            # Logic
-            for c in self.cars:
-                c.keyUpdate(self.pressed)
-            self.ball.decelerate()
-            if walls:
-                self.checkGoal(self.ball, GOAL_DEPTH, FIELD_WIDTH, SIDE_WALL, SIDE_WALL + GOAL_HEIGHT)
+            # # Logic
+            # for c in self.cars:
+            #     c.update(self.inputs)
+            # self.ball.decelerate()
+            # if walls:
+            #     self.checkGoal(self.ball, GOAL_DEPTH, FIELD_WIDTH, SIDE_WALL, SIDE_WALL + GOAL_HEIGHT)
 
             # Drawing
             print("\rLeft: ", self.leftscore, " Right: ", self.rightscore,end="")
@@ -404,6 +368,8 @@ class Game:
             self.gameSpace.step(self.dt)
             self.clock.tick(self.ticks)
         pygame.quit()
+        self.node.destroy_node()
+        rclpy.shutdown()
 
     def stepRun(self, steps:int=10):
         """Main logic function to keep track of gamestate. Steps 0.1 seconds with each SPACE key press.
@@ -433,8 +399,11 @@ class Game:
                 #print(self.cars[0].body.velocity)
             pygame.time.wait(100)
 
-if __name__ == '__main__':
-    game = Game()
-    game.run(visualizer=False)
-    #game.keyRun()
+def main():
+    
+    game = Game(carStartList=[[(FIELD_WIDTH + GOAL_DEPTH) / 3,FIELD_HEIGHT / 2]])
+    game.run(walls=True, useKeys=False, visualizer=False)
     #game.stepRun()
+
+if __name__ == '__main__':
+    main()
