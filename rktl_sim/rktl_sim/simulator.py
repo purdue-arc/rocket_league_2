@@ -1,7 +1,8 @@
+from math import cos, radians, sin
+
 import pygame
-import pymunk.pygame_util
 import pymunk
-from math import sin, radians, cos
+import pymunk.pygame_util
 
 import rclpy
 #import std_msgs
@@ -57,7 +58,7 @@ class Car:
         x:float,
         y:float,
         space:pymunk.Space,
-        angle=0
+        angle:float=0
     ):
         """Constructor method"""
         self.body = pymunk.Body(CAR_MASS, pymunk.moment_for_box(CAR_MASS, CAR_SIZE))
@@ -225,7 +226,7 @@ class Game:
     :type carlist: [[float,float,float]]"""
     def __init__(
         self,
-        carStartList:list[tuple[float,float,float]] = CAR_POS,
+        carStartList:list[tuple[float,float,float] | tuple[float, float]] = CAR_POS,
         ballPosition:tuple[float, float] = BALL_POS
     ):
         """Constructor"""
@@ -281,7 +282,7 @@ class Game:
         self.ball = Ball(self.ballPosition[0], self.ballPosition[1], self.gameSpace)
         for i in self.carStartList:
             if len(i) == 3:
-                self.cars.append(Car(i[0],i[1],self.gameSpace,i[2]))
+                self.cars.append(Car(i[0],i[1],self.gameSpace, i[2]))
             else:
                 self.cars.append(Car(i[0],i[1],self.gameSpace))
     
@@ -399,11 +400,7 @@ class Game:
                 #print(self.cars[0].body.velocity)
             pygame.time.wait(100)
 
-def main():
-    
+if __name__ == '__main__':
     game = Game(carStartList=[[(FIELD_WIDTH + GOAL_DEPTH) / 3,FIELD_HEIGHT / 2]])
     game.run(walls=True, useKeys=False, visualizer=False)
     #game.stepRun()
-
-if __name__ == '__main__':
-    main()
