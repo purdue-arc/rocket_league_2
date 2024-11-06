@@ -2,8 +2,8 @@
 <?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
 <package format="3">
   <name>rktl_interfaces</name>
-  <version>0.0.0</version>
-  <description>TODO: Package description</description>
+  <version>1.0.0</version>
+  <description>Details custom ros message types</description>
   <maintainer email="anshag@gmail.com">DinoSage</maintainer>
   <license>Apache-2.0</license>
 

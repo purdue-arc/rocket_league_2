@@ -1,13 +1,11 @@
-from math import cos, radians, sin
+from math import cos, radians, sin, degrees
 
 import pygame
 import pymunk
 import pymunk.pygame_util
 
 import rclpy
-#import std_msgs
-import std_msgs.msg
-#from std_msgs.msg import String
+from rktl_interfaces.msg import Field, Pose, CarAction
 
 #Field Specs
 FIELD_WIDTH = 426.72
@@ -28,7 +26,8 @@ BRAKE_SPEED = 5  # Multiplier of CAR_SPEED for braking force
 FREE_DECELERATION = 0.5  # Rate velocity decreases with no input
 CAR_FRICTION = 0.5
 CAR_COLOR = pygame.Color("green")
-CAR_POS = [[(FIELD_WIDTH + GOAL_DEPTH) / 3,FIELD_HEIGHT / 2],[2 * (FIELD_WIDTH + GOAL_DEPTH) / 3,FIELD_HEIGHT / 2,180]]
+CAR_COLOR_ALT = pygame.Color("red")
+CAR_POS = [[True, (FIELD_WIDTH + GOAL_DEPTH) / 3,FIELD_HEIGHT / 2],[False, 2 * (FIELD_WIDTH + GOAL_DEPTH) / 3,FIELD_HEIGHT / 2,180]]
 
 #Ball Specs
 BALL_MASS = 0.1
@@ -44,6 +43,8 @@ MAX_SPEED = 200 # Max speed limit of the cars
 
 class Car:
     """Class used to define each car in the simulator.
+    :param team: Boolean that determines which team the car is on
+    :type team: bool
     :param x: x coordinate for the starting position of the car
     :type x: float
     :param y: y coordinate for the starting position of the car
@@ -55,10 +56,11 @@ class Car:
     """
     def __init__(
         self,
+        team:bool,
         x:float,
         y:float,
         space:pymunk.Space,
-        angle:float=0
+        angle:float
     ):
         """Constructor method"""
         self.body = pymunk.Body(CAR_MASS, pymunk.moment_for_box(CAR_MASS, CAR_SIZE))
@@ -66,7 +68,10 @@ class Car:
         self.body.angle = radians(angle)
 
         self.shape = pymunk.Poly.create_box(self.body, CAR_SIZE)
-        self.shape.color = CAR_COLOR
+        if (team):
+            self.shape.color = CAR_COLOR
+        else:
+            self.shape.color = CAR_COLOR_ALT
         self.shape.friction = CAR_FRICTION
 
         self.space = space
@@ -161,16 +166,22 @@ class Car:
         self.body.velocity = self.forward_direction * self.reverse * min(self.body.velocity.length, MAX_SPEED)
 
     def getPos(self) -> pymunk.vec2d.Vec2d:
-        """Returns the ball's current x and y position
+        """Returns the car's current x and y position
         :return: List of positional coordinates in :class:`pymunk.vec2d.Vec2d` format
         :rtype: :class:`pymunk.vec2d.Vec2d`"""
         return self.body.position
     
     def getVelocity(self) -> pymunk.vec2d.Vec2d:
-        """Returns the ball's current velocity
+        """Returns the car's current velocity
         :return: Current velocity in the :class:`pymunk.vec2d.Vec2d` format
         :rtype: :class:`pymunk.vec2d.Vec2d`"""
         return self.body.velocity
+
+    def getAngle(self) -> float:
+        """Returns the ball's current velocity
+        :return: Current angle in degrees clockwise from east
+        :rtype: float"""
+        return degrees(self.body.angle)
 
 class Ball:
     """Class used to define the soccer ball
@@ -222,11 +233,11 @@ class Ball:
 
 class Game:
     """Gamestate object that handles simulation of physics.
-    :param carlist: List of tuples where [x position, y position, angle from east]. Angle from east is assumed 0 if blank
-    :type carlist: [[float,float,float]]"""
+    :param carlist: List of tuples where [team, x position, y position, angle from east]. Angle from east is assumed 0 if blank
+    :type carlist: list[tuple[bool, float, float, float] | tuple[bool, float, float]]"""
     def __init__(
         self,
-        carStartList:list[tuple[float,float,float] | tuple[float, float]] = CAR_POS,
+        carStartList:list[tuple[bool, float, float, float] | tuple[bool, float, float]] = CAR_POS,
         ballPosition:tuple[float, float] = BALL_POS
     ):
         """Constructor"""
@@ -260,12 +271,12 @@ class Game:
         :param rightgoal:
         :param topgoal:
         :param botgoal:"""
-        if (ball.getPos()[0] < leftgoal):
-            if (ball.getPos()[1] > topgoal) and (ball.getPos()[1] < botgoal):
+        if (ball.getPos().x < leftgoal):
+            if (ball.getPos().y > topgoal) and (ball.getPos().y < botgoal):
                 self.rightscore += 1
             self.reset()
-        elif (ball.getPos()[0] > rightgoal):
-            if (ball.getPos()[1] > topgoal) and (ball.getPos()[1] < botgoal):
+        elif (ball.getPos().x > rightgoal):
+            if (ball.getPos().y > topgoal) and (ball.getPos().y < botgoal):
                 self.leftscore += 1
             self.reset()
 
@@ -280,11 +291,12 @@ class Game:
     def addObjects(self):
         """Adds new ball and car objects to the field"""
         self.ball = Ball(self.ballPosition[0], self.ballPosition[1], self.gameSpace)
-        for i in self.carStartList:
-            if len(i) == 3:
-                self.cars.append(Car(i[0],i[1],self.gameSpace, i[2]))
+        for i, c in enumerate(self.carStartList): #loops through list of start cars, creates new car object for each car listed
+            self.inputs[i] = [0,0] #reset's car controls
+            if len(c) == 4: #Specifies starting angle if not given
+                self.cars.append(Car(c[0],c[1], c[2],self.gameSpace, c[3]))
             else:
-                self.cars.append(Car(i[0],i[1],self.gameSpace))
+                self.cars.append(Car(c[0],c[1],c[2],self.gameSpace, 0))
     
     def updateObjects(self, walls:bool, useKeys:bool):
         if useKeys:
@@ -301,18 +313,39 @@ class Game:
         if walls:
             self.checkGoal(self.ball, GOAL_DEPTH, FIELD_WIDTH, SIDE_WALL, SIDE_WALL + GOAL_HEIGHT)
 
+    def handleInputs(self, msg):
+        for i in msg.data:
+            self.inputs[i.id-1] = [i.x, i.y]
+
+    def broadcast(self):
+        msg = Field()
+        msg.data.ball_pose.id = 0
+        msg.data.ball_pose.x = self.ball.getPos().x
+        msg.data.ball_pose.y = self.ball.getPos().y
+        msg.data.ball_pose.angle_degrees = 0
+        for i, c in enumerate(self.cars):
+            tempPos = Pose()
+            tempPos.id = i + 1
+            tempPos.x = c.getPos().x
+            tempPos.y = c.getPos().y
+            tempPos.angle_degrees = c.getAngle()
+            if c.team:
+                msg.data.team1_poses.append(tempPos)
+            else:
+                msg.data.team2_poses.append(tempPos)
+        self.publisher.publish(msg)
+
     def run(self, visualizer:bool=False, walls:bool=False, useKeys:bool=False):
         """Main logic function to keep track of gamestate. Takes input from ros messages
         :param visualizer: Toggles rendering of the simulation. Significantly reduces sim performance when rendered for remote client
         :type visualizer: bool
         :param walls: Toggles the walls of the field on or off, no walls also disables goal checks
         :type walls: bool"""
+        self.addObjects()
         rclpy.init()
         self.node = rclpy.create_node("sim_data")
-        self.node.create_subscription(std_msgs.msg.MultiArrayDimension, "car_input_array", lambda msg: setattr(self.inputs, msg),10)
-        self.pubisher = self.node.create_publisher(std_msgs.msg.MultiArrayDimension, 'field_state', 10)
-
-        self.addObjects()
+        self.node.create_subscription(CarAction, "CarAction", lambda msg: self.handleInputs(msg), 10)
+        self.pubisher = self.node.create_publisher(Field, 'FieldState', 10)
         
         # Walls in Field
         if walls:
@@ -347,7 +380,7 @@ class Game:
 
             # User input
             self.updateObjects(walls, useKeys)
-            # self.inputs=[]
+            self.broadcast()
 
             # # Logic
             # for c in self.cars:
@@ -397,10 +430,10 @@ class Game:
                     self.gameSpace.debug_draw(self.draw_options)
                     pygame.display.update()
                     self.gameSpace.step(0.1/steps)
-                #print(self.cars[0].body.velocity)
             pygame.time.wait(100)
 
 if __name__ == '__main__':
-    game = Game(carStartList=[[(FIELD_WIDTH + GOAL_DEPTH) / 3,FIELD_HEIGHT / 2]])
-    game.run(walls=True, useKeys=False, visualizer=False)
+    #game = Game(carStartList=[[(FIELD_WIDTH + GOAL_DEPTH) / 3,FIELD_HEIGHT / 2]])
+    game = Game()
+    game.run(walls=True, useKeys=True, visualizer=True)
     #game.stepRun()
