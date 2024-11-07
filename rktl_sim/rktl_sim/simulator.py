@@ -43,7 +43,7 @@ MAX_SPEED = 200 # Max speed limit of the cars
 
 class Car:
     """Class used to define each car in the simulator.
-    :param team: Boolean that determines which team the car is on
+    :param team: Boolean that determines which team the car is on (true=team1, false=team2)
     :type team: bool
     :param x: x coordinate for the starting position of the car
     :type x: float
@@ -51,7 +51,7 @@ class Car:
     :type y: float
     :param space: Contains the :class: `pymunk.space` class object for calculating physical interactions
     :type space: class: `pymunk.space`
-    :param angle: Starting rotational angle for the car (0 degrees is East)
+    :param angle: Starting rotational angle (in degrees) for the car, where 0 degrees is East
     :type angle: float
     """
     def __init__(
@@ -81,8 +81,8 @@ class Car:
         self.reverse = 1 # Stores which direction car moves, 1 for forwards and -1 for backwards
 
     def keyUpdate(self, keys:pygame.key.ScancodeWrapper):
-        """Calculates the needed motion of the car class called. Takes user input for controls
-        :param keys: Contains :class: 'pygame.key.ScancodeWrapper' class to search for key inputs
+        """Calculates the needed motion of the car class called. Takes user keyboard inputs for controls
+        :param keys: Passes :class: 'pygame.key.ScancodeWrapper' class to allow input handling
         :type keys: class: 'pygame.key.ScancodeWrapper'
         """
         self.forward_direction = pymunk.Vec2d(cos(self.body.angle), sin(self.body.angle))
@@ -128,9 +128,11 @@ class Car:
         #print("\rVelocity:{:0.2f}".format(self.body.velocity.length),end="")
 
     def update(self, controls:tuple[float,float]):
-        """Calculates the needed motion of the car class called.
-        :param controls: First float controls forward throttle percentage, ranging from 1 to -1. Second float controls turn angle percentage, positive is right and negative it left. Ranges from 1 to -1.
-        :type controls: tuple[float,float]"""
+        """Calculates the needed motion of the car class called. Takes tuples which will be transmitted through ros messages for controls.
+        :param controls: First float controls forward throttle percentage, ranging from 1 to -1.
+            Second float controls turn angle percentage, positive is right and negative is left. Ranges from 1 to -1.
+        :type controls: tuple[float,float]
+        """
         self.forward_direction = pymunk.Vec2d(cos(self.body.angle), sin(self.body.angle))
         
         self.impulse = pymunk.Vec2d(1, 0) * CAR_SPEED
@@ -166,21 +168,24 @@ class Car:
         self.body.velocity = self.forward_direction * self.reverse * min(self.body.velocity.length, MAX_SPEED)
 
     def getPos(self) -> pymunk.vec2d.Vec2d:
-        """Returns the car's current x and y position
+        """Returns the car's current x and y position. Individual positions can be called through getPos().x and getPos().y
         :return: List of positional coordinates in :class:`pymunk.vec2d.Vec2d` format
-        :rtype: :class:`pymunk.vec2d.Vec2d`"""
+        :rtype: :class:`pymunk.vec2d.Vec2d`
+        """
         return self.body.position
     
     def getVelocity(self) -> pymunk.vec2d.Vec2d:
-        """Returns the car's current velocity
+        """Returns the car's current velocity.
         :return: Current velocity in the :class:`pymunk.vec2d.Vec2d` format
-        :rtype: :class:`pymunk.vec2d.Vec2d`"""
+        :rtype: :class:`pymunk.vec2d.Vec2d`
+        """
         return self.body.velocity
 
     def getAngle(self) -> float:
-        """Returns the ball's current velocity
+        """Returns the car's current angle in degrees
         :return: Current angle in degrees clockwise from east
-        :rtype: float"""
+        :rtype: float
+        """
         return degrees(self.body.angle)
 
 class Ball:
@@ -192,7 +197,8 @@ class Ball:
     :param space: Contains the :class: `pymunk.space` class object for calculating physical interactions
     :type space: class: `pymunk.space`
     :param impulse: Starting impulse applied to the ball at object creation (defaults to no impulse)
-    :type imlpulse: class: `pymunk.Vec2d`"""
+    :type imlpulse: class: `pymunk.Vec2d`
+    """
     def __init__(
         self,
         x:float,
@@ -220,9 +226,10 @@ class Ball:
         self.body.velocity = (self.body.velocity.length - BALL_DECELERATION) * self.body.velocity.normalized()
     
     def getPos(self) -> pymunk.vec2d.Vec2d:
-        """Returns the ball's current x and y position
+        """Returns the ball's current x and y position. Individual positions can be called through getPos().x and getPos().y
         :return: List of positional coordinates in :class:`pymunk.vec2d.Vec2d` format
-        :rtype: :class:`pymunk.vec2d.Vec2d`"""
+        :rtype: :class:`pymunk.vec2d.Vec2d`
+        """
         return self.body.position
     
     def getVelocity(self) -> pymunk.vec2d.Vec2d:
@@ -232,15 +239,19 @@ class Ball:
         return self.body.velocity
 
 class Game:
-    """Gamestate object that handles simulation of physics.
-    :param carlist: List of tuples where [team, x position, y position, angle from east]. Angle from east is assumed 0 if blank
-    :type carlist: list[tuple[bool, float, float, float] | tuple[bool, float, float]]"""
+    """Gamestate object that handles simulation of physics and handling of inputs.
+    :param carlist: List of tuples where each item includes [team, x position, y position, angle from east]. Angle from east is assumed 0 if blank.
+        Defaults to one car on each team equidistant from the goal and field center.
+    :type carlist: list[tuple[bool, float, float, float] | tuple[bool, float, float]]
+    :param ballPosition: Tuple for x and y start positions of the ball. Defaults to center of the field.
+    :type ballPosition: tuple[float, float]
+    """
     def __init__(
         self,
         carStartList:list[tuple[bool, float, float, float] | tuple[bool, float, float]] = CAR_POS,
         ballPosition:tuple[float, float] = BALL_POS
     ):
-        """Constructor"""
+        """Constructor method"""
         pygame.init()
         self.screen = pygame.display.set_mode((FIELD_WIDTH + GOAL_DEPTH, FIELD_HEIGHT))
         self.draw_options = pymunk.pygame_util.DrawOptions(self.screen)
@@ -259,29 +270,29 @@ class Game:
     
     def checkGoal(
         self,
-        ball:Ball,
         leftgoal:float,
         rightgoal:float,
         topgoal:float,
         botgoal:float
     ):
-        """Checks to see if ball position is in a goal, then resets the field
-        :param ball: Contains the :class:`rktl_sim.ball` class that will be checked into the 
-        :param leftgoal:
-        :param rightgoal:
-        :param topgoal:
-        :param botgoal:"""
-        if (ball.getPos().x < leftgoal):
-            if (ball.getPos().y > topgoal) and (ball.getPos().y < botgoal):
+        """Checks to see if ball position is in a goal, then calculates new score and resets the field.
+            If ball leaves bounds without entering a goal, reset the field without scoring points.
+        :param leftgoal: Horizontal position for left goal line
+        :param rightgoal: Horizontal position for right goal line
+        :param topgoal: Vertical position of the top goal bounderies
+        :param botgoal: Vertical position of the bottom goal boundaries
+        """
+        if (self.ball.getPos().x < leftgoal):
+            if (self.ball.getPos().y > topgoal) and (self.ball.getPos().y < botgoal):
                 self.rightscore += 1
             self.reset()
-        elif (ball.getPos().x > rightgoal):
-            if (ball.getPos().y > topgoal) and (ball.getPos().y < botgoal):
+        elif (self.ball.getPos().x > rightgoal):
+            if (self.ball.getPos().y > topgoal) and (self.ball.getPos().y < botgoal):
                 self.leftscore += 1
             self.reset()
 
     def reset(self):
-        """Removes ball and car objects from the field."""
+        """Resets field by removing ball and car objects from the field, then calling self.addObjects()"""
         for c in self.cars:
             self.gameSpace.remove(c.body, c.shape)
         self.cars = []
@@ -289,7 +300,7 @@ class Game:
         self.addObjects()
 
     def addObjects(self):
-        """Adds new ball and car objects to the field"""
+        """Adds new ball and car objects to the field according to the contents of self.carStartList"""
         self.ball = Ball(self.ballPosition[0], self.ballPosition[1], self.gameSpace)
         for i, c in enumerate(self.carStartList): #loops through list of start cars, creates new car object for each car listed
             self.inputs[i] = [0,0] #reset's car controls
@@ -299,6 +310,12 @@ class Game:
                 self.cars.append(Car(c[0],c[1],c[2],self.gameSpace, 0))
     
     def updateObjects(self, walls:bool, useKeys:bool):
+        """Updates controls for all objects currently on the field. Also decelerates the ball.
+        :param walls: Indicates whether field walls are enabled. Does not calculate goals if false.
+        :type walls: bool
+        :param useKeys: Toggles usage of keyboard inputs for calculations (true), or ros messages (false)
+        :type useKeys: bool
+        """
         if useKeys:
             self.pressed = pygame.key.get_pressed()
             for c in self.cars:
@@ -311,21 +328,21 @@ class Game:
                     c.update([0,0])
         self.ball.decelerate()
         if walls:
-            self.checkGoal(self.ball, GOAL_DEPTH, FIELD_WIDTH, SIDE_WALL, SIDE_WALL + GOAL_HEIGHT)
+            self.checkGoal(GOAL_DEPTH, FIELD_WIDTH, SIDE_WALL, SIDE_WALL + GOAL_HEIGHT)
 
     def handleInputs(self, msg):
         for i in msg.data:
-            self.inputs[i.id-1] = [i.x, i.y]
+            self.inputs[i.id] = [i.x, i.y]
 
     def broadcast(self):
         msg = Field()
-        msg.data.ball_pose.id = 0
+        msg.data.ball_pose.id = -1
         msg.data.ball_pose.x = self.ball.getPos().x
         msg.data.ball_pose.y = self.ball.getPos().y
         msg.data.ball_pose.angle_degrees = 0
         for i, c in enumerate(self.cars):
             tempPos = Pose()
-            tempPos.id = i + 1
+            tempPos.id = i
             tempPos.x = c.getPos().x
             tempPos.y = c.getPos().y
             tempPos.angle_degrees = c.getAngle()
@@ -340,7 +357,10 @@ class Game:
         :param visualizer: Toggles rendering of the simulation. Significantly reduces sim performance when rendered for remote client
         :type visualizer: bool
         :param walls: Toggles the walls of the field on or off, no walls also disables goal checks
-        :type walls: bool"""
+        :type walls: bool
+        :param useKeys: Toggles between usage of keyboard inputs or ros messages
+        :type useKeys: bool
+        """
         self.addObjects()
         rclpy.init()
         self.node = rclpy.create_node("sim_data")
