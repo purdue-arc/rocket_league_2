@@ -457,3 +457,6 @@ if __name__ == '__main__':
     game = Game()
     game.run(walls=True, useKeys=True, visualizer=True)
     #game.stepRun()
+def main():
+    game = Game()
+    game.run(walls=True, useKeys=True, visualizer=True)
