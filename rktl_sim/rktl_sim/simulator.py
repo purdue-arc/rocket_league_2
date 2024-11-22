@@ -303,7 +303,7 @@ class Game:
         """Adds new ball and car objects to the field according to the contents of self.carStartList"""
         self.ball = Ball(self.ballPosition[0], self.ballPosition[1], self.gameSpace)
         for i, c in enumerate(self.carStartList): #loops through list of start cars, creates new car object for each car listed
-            self.inputs[i] = [0,0] #reset's car controls
+            self.inputs.append([0,0]) #reset's car controls
             if len(c) == 4: #Specifies starting angle if not given
                 self.cars.append(Car(c[0],c[1], c[2],self.gameSpace, c[3]))
             else:
