@@ -68,7 +68,8 @@ class Car:
         self.body.angle = radians(angle)
 
         self.shape = pymunk.Poly.create_box(self.body, CAR_SIZE)
-        if (team):
+        self.team = team
+        if (self.team):
             self.shape.color = CAR_COLOR
         else:
             self.shape.color = CAR_COLOR_ALT
@@ -331,15 +332,15 @@ class Game:
             self.checkGoal(GOAL_DEPTH, FIELD_WIDTH, SIDE_WALL, SIDE_WALL + GOAL_HEIGHT)
 
     def handleInputs(self, msg):
-        for i in msg.data:
+        for i in msg:
             self.inputs[i.id] = [i.x, i.y]
 
     def broadcast(self):
         msg = Field()
-        msg.data.ball_pose.id = -1
-        msg.data.ball_pose.x = self.ball.getPos().x
-        msg.data.ball_pose.y = self.ball.getPos().y
-        msg.data.ball_pose.angle_degrees = 0
+        msg.ball_pose.id = -1
+        msg.ball_pose.x = self.ball.getPos().x
+        msg.ball_pose.y = self.ball.getPos().y
+        msg.ball_pose.angle_degrees = 0
         for i, c in enumerate(self.cars):
             tempPos = Pose()
             tempPos.id = i
@@ -347,9 +348,9 @@ class Game:
             tempPos.y = c.getPos().y
             tempPos.angle_degrees = c.getAngle()
             if c.team:
-                msg.data.team1_poses.append(tempPos)
+                msg.team1_poses.append(tempPos)
             else:
-                msg.data.team2_poses.append(tempPos)
+                msg.team2_poses.append(tempPos)
         self.publisher.publish(msg)
 
     def run(self, visualizer:bool=False, walls:bool=False, useKeys:bool=False):
