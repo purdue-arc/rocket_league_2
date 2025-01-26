@@ -25,7 +25,7 @@ import threading
 # In[2]:
 
 
-model = YOLO("best.pt")  # load anofficial model
+model = YOLO("best.pt")  # load an official model
 
 
 # In[3]:
