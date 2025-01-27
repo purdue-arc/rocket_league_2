@@ -247,7 +247,7 @@ class Game:
     :param ballPosition: Tuple for x and y start positions of the ball. Defaults to center of the field.
     :type ballPosition: tuple[float, float]
     """
-    def __init__(
+    def __init__( #TODO: add publisher logic
         self,
         carStartList:list[tuple[bool, float, float, float] | tuple[bool, float, float]] = CAR_POS,
         ballPosition:tuple[float, float] = BALL_POS
