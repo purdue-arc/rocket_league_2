@@ -340,7 +340,7 @@ class Game:
         msg.ball_pose.id = -1
         msg.ball_pose.x = self.ball.getPos().x
         msg.ball_pose.y = self.ball.getPos().y
-        msg.ball_pose.angle_degrees = 0
+        msg.ball_pose.angle_degrees = 0.0
         for i, c in enumerate(self.cars):
             tempPos = Pose()
             tempPos.id = i
@@ -366,7 +366,7 @@ class Game:
         rclpy.init()
         self.node = rclpy.create_node("sim_data")
         self.node.create_subscription(CarAction, "CarAction", lambda msg: self.handleInputs(msg), 10)
-        self.pubisher = self.node.create_publisher(Field, 'FieldState', 10)
+        self.publisher = self.node.create_publisher(Field, 'FieldState', 10)
         
         # Walls in Field
         if walls:
