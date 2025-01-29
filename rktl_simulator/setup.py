@@ -1,6 +1,6 @@
 from setuptools import find_packages, setup
 
-package_name = 'rktl_sim'
+package_name = 'rktl_simulator'
 
 setup(
     name=package_name,
@@ -20,6 +20,7 @@ setup(
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
+            'simulator = rktl_simulator.simulator:main'
         ],
     },
 )
