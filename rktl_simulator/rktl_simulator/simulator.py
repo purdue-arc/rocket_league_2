@@ -303,7 +303,7 @@ class Game:
     def addObjects(self):
         """Adds new ball and car objects to the field according to the contents of self.carStartList"""
         self.ball = Ball(self.ballPosition[0], self.ballPosition[1], self.gameSpace)
-        for i, c in enumerate(self.carStartList): #loops through list of start cars, creates new car object for each car listed
+        for c in self.carStartList: #loops through list of start cars, creates new car object for each car listed
             self.inputs.append([0,0]) #reset's car controls
             if len(c) == 4: #Specifies starting angle if not given
                 self.cars.append(Car(c[0],c[1], c[2],self.gameSpace, c[3]))
@@ -403,13 +403,6 @@ class Game:
             self.updateObjects(walls, useKeys)
             self.broadcast()
 
-            # # Logic
-            # for c in self.cars:
-            #     c.update(self.inputs)
-            # self.ball.decelerate()
-            # if walls:
-            #     self.checkGoal(self.ball, GOAL_DEPTH, FIELD_WIDTH, SIDE_WALL, SIDE_WALL + GOAL_HEIGHT)
-
             # Drawing
             print("\rLeft: ", self.leftscore, " Right: ", self.rightscore,end="")
             if visualizer:
@@ -426,38 +419,9 @@ class Game:
         self.node.destroy_node()
         rclpy.shutdown()
 
-    def stepRun(self, steps:int=10):
-        """Main logic function to keep track of gamestate. Steps 0.1 seconds with each SPACE key press.
-        :param steps: Number of steps taken per 0.1 seconds when SPACE key is pressed
-        :type steps: int
-        """
-        self.ball = Ball(self.ballPosition[0], self.ballPosition[1], self.gameSpace, pymunk.vec2d.Vec2d(10,0))
-        self.cars.append(Car(2 * (FIELD_WIDTH + GOAL_DEPTH) / 3, FIELD_HEIGHT / 2, self.gameSpace, 180))
-
-        self.screen.fill(pygame.Color("white"))
-        self.gameSpace.debug_draw(self.draw_options)
-        pygame.display.update()
-        while not self.exit:
-            for event in pygame.event.get():
-                if event.type == pygame.QUIT:
-                    self.exit = True
-            # User input
-            self.pressed = pygame.key.get_pressed()
-
-            if self.pressed[pygame.K_SPACE]:
-                for _ in range(steps):
-                    self.cars[0].update([1,0])
-                    self.screen.fill(pygame.Color("white"))
-                    self.gameSpace.debug_draw(self.draw_options)
-                    pygame.display.update()
-                    self.gameSpace.step(0.1/steps)
-            pygame.time.wait(100)
-
-if __name__ == '__main__':
-    #game = Game(carStartList=[[(FIELD_WIDTH + GOAL_DEPTH) / 3,FIELD_HEIGHT / 2]])
-    game = Game()
-    game.run(walls=True, useKeys=True, visualizer=True)
-    #game.stepRun()
+# if __name__ == '__main__':
+#     game = Game()
+#     game.run(walls=True, useKeys=True, visualizer=True)
 def main():
     game = Game()
     game.run(walls=True, useKeys=True, visualizer=True)
