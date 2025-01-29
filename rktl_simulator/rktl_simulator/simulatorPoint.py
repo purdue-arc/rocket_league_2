@@ -3,13 +3,22 @@ from simulator import Car, Ball, BALL_POS, CAR_POS, FIELD_HEIGHT, GOAL_DEPTH, FI
 import pygame
 import pymunk
 
+import rclpy
+from rktl_interfaces.msg import Field, Pose, CarAction
+
 class PointGame():
     def __init__(
         self,
         carStartList:list[tuple[bool, float, float, float] | tuple[bool, float, float]] = CAR_POS,
         ballPosition:tuple[float, float] = BALL_POS
     ):
-        """Constructor method"""
+        """Constructor method
+
+        :param carStartList: Positions of cars, defaults to CAR_POS
+        :type carStartList: list[tuple[bool, float, float, float]  |  tuple[bool, float, float]], optional
+        :param ballPosition: Position of the ball, defaults to BALL_POS
+        :type ballPosition: tuple[float, float], optional
+        """        """Constructor method"""
         pygame.init()
         self.screen = pygame.display.set_mode((FIELD_WIDTH + GOAL_DEPTH, FIELD_HEIGHT))
         self.draw_options = pymunk.pygame_util.DrawOptions(self.screen)
@@ -26,7 +35,7 @@ class PointGame():
 
         self.gameSpace = pymunk.Space()
         
-    def Run(self, steps:int=10):
+    def run(self, steps:int=10):
         """Main logic function to keep track of gamestate. Steps 0.1 seconds with each SPACE key press.
         :param steps: Number of steps taken per 0.1 seconds when SPACE key is pressed
         :type steps: int
