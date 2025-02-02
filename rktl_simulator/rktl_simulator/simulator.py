@@ -354,7 +354,7 @@ class Game:
         self.publisher.publish(msg)
 
     def run(self, visualizer:bool=False, walls:bool=False, useKeys:bool=False):
-        """Main logic function to keep track of gamestate. Takes input from ros messages
+        """Main logic function to keep track of gamestate. Takes input from ROS messages
         :param visualizer: Toggles rendering of the simulation. Significantly reduces sim performance when rendered for remote client
         :type visualizer: bool
         :param walls: Toggles the walls of the field on or off, no walls also disables goal checks
