@@ -78,6 +78,8 @@ class PointGame():
         self.publisher.publish(msgOut)
     
     def randomizePositions(self):
+        """Sets random positions and velocities for the ball and all cars
+        """        
         self.ball.setPos((
             random.randrange(0, FIELD_WIDTH, 0.1),
             random.randrange(0, FIELD_HEIGHT, 0.1)
