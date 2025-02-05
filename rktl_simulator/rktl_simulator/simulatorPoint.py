@@ -40,24 +40,69 @@ class PointGame():
         :param steps: Number of steps taken per 0.1 seconds when SPACE key is pressed
         :type steps: int
         """
+        
         self.ball = Ball(self.ballPosition[0], self.ballPosition[1], self.gameSpace, pymunk.vec2d.Vec2d(10,0))
         self.cars.append(Car(2 * (FIELD_WIDTH + GOAL_DEPTH) / 3, FIELD_HEIGHT / 2, self.gameSpace, 180))
+        
+        self.node = rclpy.create_node("simNode")
+        self.publisher = self.node.create_publisher(Field, "simTopic", 10)
+        self.subscriber = self.node.create_subscription(CarAction, "aiTopic", self.runAStep, 10)
+    
+    def runAStep(self, msg: CarAction):
+        """The callback function for the subscriber
 
-        self.screen.fill(pygame.Color("white"))
-        self.gameSpace.debug_draw(self.draw_options)
-        pygame.display.update()
-        while not self.exit:
-            for event in pygame.event.get():
-                if event.type == pygame.QUIT:
-                    self.exit = True
-            # User input
-            self.pressed = pygame.key.get_pressed()
+        :param msg: The message sent in
+        :type msg: CarAction
+        """        
+        steps = 10
+        for _ in range(steps):
+            self.cars[msg.id].update([msg.throttle, msg.steer])
+            pygame.display.update()
+            self.gameSpace.step(0.1/steps)
+        msgOut = Field()
+        msgOut.ball_pose.id = -1
+        (msgOut.ball_pose.x, msgOut.ball_pose.y) = self.ball.getPos()
+        msg.ball_pose.angle = 0.0
+        for i, c in enumerate(self.cars):
+            tempPose = Pose()
+            tempPose.id = i
+            (tempPose.x, tempPose.y) = c.getPos()
+            tempPose.angle = c.getAngle()
+            if c.team:
+                msgOut.team1_poses.append(tempPose)
+            else:
+                msgOut.team2_poses.append(tempPose)
+        self.publisher.publish(msgOut)
 
-            if self.pressed[pygame.K_SPACE]:
-                for _ in range(steps):
-                    self.cars[0].update([1,0])
-                    self.screen.fill(pygame.Color("white"))
-                    self.gameSpace.debug_draw(self.draw_options)
-                    pygame.display.update()
-                    self.gameSpace.step(0.1/steps)
-            pygame.time.wait(100)
+class MessagePublisher(rclpy.Node):
+    def __init__(
+        self,
+        publisherName: str,
+        publisherTopic: str,
+        gameInstance: PointGame,
+        queueSize: int = 10,
+        timed: bool = False,
+        timerPeriod: int = 10
+    ):
+        super().__init__(publisherName)
+        if timed:
+            self.timer = self.create_timer(timerPeriod, self.timer_callback)
+        self.publisher_ = self.create_publisher(Field, publisherTopic, queueSize)
+        self.gameInstance = gameInstance
+    
+    def timer_callback(self):
+        msg = Field()
+        msg.ball_pose.id = -1
+        msg.ball_pose.x = self.gameInstance.ball.getPos().x
+        msg.ball_pose.y = self.gameInstance.ball.getPos().y
+        msg.ball_pose.angle = 0.0
+        for i, c in enumerate(self.gameInstance.cars):
+            tempPose = Pose()
+            tempPose.id = i
+            (tempPose.x, tempPose.y) = c.getPos()
+            tempPose.angle = c.getAngle()
+            if c.team:
+                msg.team1_poses.append(tempPose)
+            else:
+                msg.team2_poses.appent(tempPose)
+        self.publisher_.publish(msg)
