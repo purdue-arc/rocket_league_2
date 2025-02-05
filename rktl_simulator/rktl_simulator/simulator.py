@@ -130,6 +130,7 @@ class Car:
 
     def update(self, controls:tuple[float,float]):
         """Calculates the needed motion of the car class called. Takes tuples which will be transmitted through ros messages for controls.
+        
         :param controls: First float controls forward throttle percentage, ranging from 1 to -1.
             Second float controls turn angle percentage, positive is right and negative is left. Ranges from 1 to -1.
         :type controls: tuple[float,float]
@@ -170,6 +171,7 @@ class Car:
 
     def getPos(self) -> pymunk.vec2d.Vec2d:
         """Returns the car's current x and y position. Individual positions can be called through getPos().x and getPos().y
+        
         :return: List of positional coordinates in :class:`pymunk.vec2d.Vec2d` format
         :rtype: :class:`pymunk.vec2d.Vec2d`
         """
@@ -177,6 +179,7 @@ class Car:
     
     def getVelocity(self) -> pymunk.vec2d.Vec2d:
         """Returns the car's current velocity.
+        
         :return: Current velocity in the :class:`pymunk.vec2d.Vec2d` format
         :rtype: :class:`pymunk.vec2d.Vec2d`
         """
@@ -184,10 +187,36 @@ class Car:
 
     def getAngle(self) -> float:
         """Returns the car's current angle in degrees
+        
         :return: Current angle in degrees clockwise from east
         :rtype: float
         """
         return degrees(self.body.angle)
+
+    def setPos(self, pos: tuple[float, float] | pymunk.vec2d.Vec2d):
+        """Set's the car's position
+
+        :param pos: A tuple or vector of the position (x, y)
+        :type pos: tuple[float, float] | pymunk.vec2d.Vec2d
+        """        
+        self.body._set_position(pos)
+    
+    def setVel(self, vel: tuple[float, float] | pymunk.vec2d.Vec2d):
+        """Sets the car's velocity
+
+        :param vel: A tuple or vector of the position (x, y)
+        :type vel: tuple[float, float] | pymunk.vec2d.Vec2d
+        """
+        self.body._set_velocity(vel)
+    
+    def setAngle(self, angle: float):
+        """Set's the car's angle
+
+        :param angle: The angle in degrees cw from east
+        :type angle: float
+        """        
+        self.body._set_angle(angle)
+        
 
 class Ball:
     """Class used to define the soccer ball
@@ -236,8 +265,25 @@ class Ball:
     def getVelocity(self) -> pymunk.vec2d.Vec2d:
         """Returns the ball's current velocity
         :return: Current velocity in the :class:`pymunk.vec2d.Vec2d` format
-        :rtype: :class:`pymunk.vec2d.Vec2d`"""
+        :rtype: :class:`pymunk.vec2d.Vec2d`
+        """
         return self.body.velocity
+    
+    def setPos(self, pos: tuple[float, float] | pymunk.vec2d.Vec2d):
+        """Set's the ball's position
+
+        :param pos: A tuple or vector of the position (x, y)
+        :type pos: tuple[float, float] | pymunk.vec2d.Vec2d
+        """        
+        self.body._set_position(pos)
+    
+    def setVelocity(self, vel: tuple[float, float] | pymunk.vec2d.Vec2d):
+        """Set's the ball's velocity
+
+        :param vel: A tuple or vector of the velocity (x, y)
+        :type vel: tuple[float, float] | pymunk.vec2d.Vec2d
+        """        
+        self.body._set_velocity(vel)        
 
 class Game:
     """Gamestate object that handles simulation of physics and handling of inputs.
