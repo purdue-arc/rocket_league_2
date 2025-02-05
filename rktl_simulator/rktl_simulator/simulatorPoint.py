@@ -56,7 +56,10 @@ class PointGame():
 
         :param msg: The message sent in
         :type msg: CarAction
-        """        
+        """
+        if self.ball.shape.shapes_collide(self.cars[0]).points != []:
+            self.randomizePositions()
+            
         steps = 10
         for _ in range(steps):
             self.cars[msg.id].update([msg.throttle, msg.steer])
