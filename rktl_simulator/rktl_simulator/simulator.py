@@ -469,5 +469,40 @@ class Game:
 #     game = Game()
 #     game.run(walls=True, useKeys=True, visualizer=True)
 def main():
-    game = Game()
-    game.run(walls=True, useKeys=True, visualizer=True)
+    import threading, time
+    from rktl_simulator.simulatorPoint import PointGame
+
+
+    def printFieldState(msg):
+        recievedMessage = True
+        localNode.get_logger.info("recieved:")
+        localNode.get_logger.info(f"Ball Pose: x:{msg.ball_pose.x}, y:{msg.ball_pose.y}, id:{msg.ball_pose.id}")
+        localNode.get_logger.info(f"Car Pose: x:{msg.team1_poses[0], }")
+
+
+    game = PointGame(carStartList=[
+        (True, (FIELD_WIDTH + GOAL_DEPTH) / 3, FIELD_HEIGHT / 2)
+    ])
+
+    gameThread = threading.Thread(target=game.run)
+    rclpy.init()
+    localNode = rclpy.create_node("tester")
+    sub = localNode.create_subscription(Field, "simTopic", printFieldState, 10)
+    pub = localNode.create_publisher(CarAction, "aiTopic", 10)
+
+    def broadcast():
+        localNode.get_logger().info("sending message")
+        send = CarAction()
+        send.id = 0
+        send.throttle = 1.0
+        send.steer = 1.0
+        pub.publish(send)
+    
+    gameThread.start()
+    recievedMessage = False
+    while True:
+        if not recievedMessage:
+            localNode.get_logger().info("Broadcasting, no message recieved yet...")
+            broadcast()
+            time.sleep(1)
+            

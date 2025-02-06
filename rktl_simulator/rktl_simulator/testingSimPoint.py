@@ -1,6 +1,6 @@
 import rclpy
+from rktl_interfaces.msg import CarAction, Field
 from simulatorPoint import PointGame
-from rktl_interfaces.msg import CarAction, Field, Pose
 import threading
 from simulator import FIELD_WIDTH, GOAL_DEPTH, FIELD_HEIGHT
 

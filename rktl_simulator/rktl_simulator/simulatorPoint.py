@@ -3,7 +3,7 @@ import random
 import pygame
 import pymunk
 import rclpy
-from simulator import (BALL_POS, CAR_POS, FIELD_HEIGHT, FIELD_WIDTH,
+from rktl_simulator.simulator import (BALL_POS, CAR_POS, FIELD_HEIGHT, FIELD_WIDTH,
                        GOAL_DEPTH, Ball, Car)
 
 from rktl_interfaces.msg import CarAction, Field, Pose
@@ -45,11 +45,14 @@ class PointGame():
         """
         
         self.ball = Ball(self.ballPosition[0], self.ballPosition[1], self.gameSpace, pymunk.vec2d.Vec2d(10,0))
-        self.cars.append(Car(2 * (FIELD_WIDTH + GOAL_DEPTH) / 3, FIELD_HEIGHT / 2, self.gameSpace, 180))
+        self.cars.append(Car(True, 2 * (FIELD_WIDTH + GOAL_DEPTH) / 3, FIELD_HEIGHT / 2, self.gameSpace, 180))
         
         self.node = rclpy.create_node("simNode")
+        self.node.get_logger().info("point Created node")
         self.publisher = self.node.create_publisher(Field, "simTopic", 10)
+        self.node.get_logger().info("point Created publisher")
         self.subscriber = self.node.create_subscription(CarAction, "aiTopic", self.runAStep, 10)
+        self.node.get_logger().info("point Created subscriber")
     
     def runAStep(self, msg: CarAction):
         """The callback function for the subscriber
@@ -57,6 +60,7 @@ class PointGame():
         :param msg: The message sent in
         :type msg: CarAction
         """
+        self.node.get_logger().info("Recieved message, calculating...")
         if self.ball.shape.shapes_collide(self.cars[0]).points != []:
             self.randomizePositions()
             
@@ -79,6 +83,7 @@ class PointGame():
             else:
                 msgOut.team2_poses.append(tempPose)
         self.publisher.publish(msgOut)
+        self.node.get_logger().info("Calculated, published message")
     
     def randomizePositions(self):
         """Sets random positions and velocities for the ball and all cars
