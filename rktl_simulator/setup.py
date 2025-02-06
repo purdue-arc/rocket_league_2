@@ -11,7 +11,7 @@ setup(
             ['resource/' + package_name]),
         ('share/' + package_name, ['package.xml']),
     ],
-    install_requires=['setuptools'],
+    install_requires=['setuptools', 'rclpy'],
     zip_safe=True,
     maintainer='sixfootsix50',
     maintainer_email='sixfootsix50@gmail.com',
@@ -20,7 +20,10 @@ setup(
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
-            'simulator = rktl_simulator.simulator:main'
+            'simulator = rktl_simulator.simulator:main',
+            'runPoint = rktl_simulator.simulatorPoint:main',
+            'runTest = rktl_simulator.testingSimPoint:main',
+            'sendOne = rktl_simulator.singleMessage:main'
         ],
     },
 )

@@ -465,44 +465,32 @@ class Game:
         self.node.destroy_node()
         rclpy.shutdown()
 
-# if __name__ == '__main__':
-#     game = Game()
-#     game.run(walls=True, useKeys=True, visualizer=True)
-def main():
-    import threading, time
-    from rktl_simulator.simulatorPoint import PointGame
+def main(args = None):
+    import time
+    class tester(rclpy.Node):
+        def printFieldState(self, msg):
+            self.recievedMessage = True
+            self.get_logger.info("recieved:")
+            self.get_logger.info(f"Ball Pose: x:{msg.ball_pose.x}, y:{msg.ball_pose.y}, id:{msg.ball_pose.id}")
+            self.get_logger.info(f"Car Pose: x:{msg.team1_poses[0].x}, y:{msg.team1_poses[0].y}, angle: {msg.team1_poses[0].angle}, id:{msg.team1_poses[0].id}")
+        
+        def broadcast(self):
+            self.get_logger().info("sending message")
+            send = CarAction()
+            send.id = 0
+            send.throttle = 1.0
+            send.steer = 1.0
+            self.publisher_.publish(send)
+        
+        def __init__(self):
+            super().__init__("tester")
+            self.recievedMessage = False
+            self.subscriptions = self.create_subscription(Field, "simTopic", self.printFieldState, 10)
+            self.publisher_ = self.create_publisher(CarAction, "aiTopic", 10)
 
-
-    def printFieldState(msg):
-        recievedMessage = True
-        localNode.get_logger.info("recieved:")
-        localNode.get_logger.info(f"Ball Pose: x:{msg.ball_pose.x}, y:{msg.ball_pose.y}, id:{msg.ball_pose.id}")
-        localNode.get_logger.info(f"Car Pose: x:{msg.team1_poses[0], }")
-
-
-    game = PointGame(carStartList=[
-        (True, (FIELD_WIDTH + GOAL_DEPTH) / 3, FIELD_HEIGHT / 2)
-    ])
-
-    gameThread = threading.Thread(target=game.run)
     rclpy.init()
-    localNode = rclpy.create_node("tester")
-    sub = localNode.create_subscription(Field, "simTopic", printFieldState, 10)
-    pub = localNode.create_publisher(CarAction, "aiTopic", 10)
-
-    def broadcast():
-        localNode.get_logger().info("sending message")
-        send = CarAction()
-        send.id = 0
-        send.throttle = 1.0
-        send.steer = 1.0
-        pub.publish(send)
-    
-    gameThread.start()
-    recievedMessage = False
-    while True:
-        if not recievedMessage:
-            localNode.get_logger().info("Broadcasting, no message recieved yet...")
-            broadcast()
-            time.sleep(1)
-            
+    testerNode = tester()
+    while not testerNode.recievedMessage:
+        testerNode.broadcast()
+        time.sleep(1)
+    rclpy.spin(testerNode)
