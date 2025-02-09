@@ -44,7 +44,7 @@ class PointGame(Node):
         self.publisher_ = self.create_publisher(Field, "simTopic", 10)
         self.subscriber_ = self.create_subscription(CarAction, "aiTopic", self.runAStep, 10)
         
-    def run(self, steps:int=10):
+    def run(self):
         """Main logic function to keep track of gamestate. Steps 0.1 seconds with each SPACE key press.
         :param steps: Number of steps taken per 0.1 seconds when SPACE key is pressed
         :type steps: int

@@ -22,8 +22,8 @@ setup(
         'console_scripts': [
             'simulator = rktl_simulator.simulator:main',
             'runPoint = rktl_simulator.simulatorPoint:main',
-            'runTest = rktl_simulator.testingSimPoint:main',
-            'sendOne = rktl_simulator.singleMessage:main'
+            'runTest = rktl_simulator.broadcast_tests.testingSimPoint:main',
+            'sendOne = rktl_simulator.broadcast_tests.singleMessage:main'
         ],
     },
 )
