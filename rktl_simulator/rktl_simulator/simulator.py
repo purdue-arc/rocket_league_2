@@ -130,6 +130,7 @@ class Car:
 
     def update(self, controls:tuple[float,float]):
         """Calculates the needed motion of the car class called. Takes tuples which will be transmitted through ros messages for controls.
+        
         :param controls: First float controls forward throttle percentage, ranging from 1 to -1.
             Second float controls turn angle percentage, positive is right and negative is left. Ranges from 1 to -1.
         :type controls: tuple[float,float]
@@ -170,6 +171,7 @@ class Car:
 
     def getPos(self) -> pymunk.vec2d.Vec2d:
         """Returns the car's current x and y position. Individual positions can be called through getPos().x and getPos().y
+        
         :return: List of positional coordinates in :class:`pymunk.vec2d.Vec2d` format
         :rtype: :class:`pymunk.vec2d.Vec2d`
         """
@@ -177,6 +179,7 @@ class Car:
     
     def getVelocity(self) -> pymunk.vec2d.Vec2d:
         """Returns the car's current velocity.
+        
         :return: Current velocity in the :class:`pymunk.vec2d.Vec2d` format
         :rtype: :class:`pymunk.vec2d.Vec2d`
         """
@@ -184,10 +187,36 @@ class Car:
 
     def getAngle(self) -> float:
         """Returns the car's current angle in degrees
+        
         :return: Current angle in degrees clockwise from east
         :rtype: float
         """
         return degrees(self.body.angle)
+
+    def setPos(self, pos: tuple[float, float] | pymunk.vec2d.Vec2d):
+        """Set's the car's position
+
+        :param pos: A tuple or vector of the position (x, y)
+        :type pos: tuple[float, float] | pymunk.vec2d.Vec2d
+        """        
+        self.body._set_position(pos)
+    
+    def setVel(self, vel: tuple[float, float] | pymunk.vec2d.Vec2d):
+        """Sets the car's velocity
+
+        :param vel: A tuple or vector of the position (x, y)
+        :type vel: tuple[float, float] | pymunk.vec2d.Vec2d
+        """
+        self.body._set_velocity(vel)
+    
+    def setAngle(self, angle: float):
+        """Set's the car's angle
+
+        :param angle: The angle in degrees cw from east
+        :type angle: float
+        """        
+        self.body._set_angle(angle)
+        
 
 class Ball:
     """Class used to define the soccer ball
@@ -236,8 +265,25 @@ class Ball:
     def getVelocity(self) -> pymunk.vec2d.Vec2d:
         """Returns the ball's current velocity
         :return: Current velocity in the :class:`pymunk.vec2d.Vec2d` format
-        :rtype: :class:`pymunk.vec2d.Vec2d`"""
+        :rtype: :class:`pymunk.vec2d.Vec2d`
+        """
         return self.body.velocity
+    
+    def setPos(self, pos: tuple[float, float] | pymunk.vec2d.Vec2d):
+        """Set's the ball's position
+
+        :param pos: A tuple or vector of the position (x, y)
+        :type pos: tuple[float, float] | pymunk.vec2d.Vec2d
+        """        
+        self.body._set_position(pos)
+    
+    def setVelocity(self, vel: tuple[float, float] | pymunk.vec2d.Vec2d):
+        """Set's the ball's velocity
+
+        :param vel: A tuple or vector of the velocity (x, y)
+        :type vel: tuple[float, float] | pymunk.vec2d.Vec2d
+        """        
+        self.body._set_velocity(vel)        
 
 class Game:
     """Gamestate object that handles simulation of physics and handling of inputs.
@@ -354,7 +400,7 @@ class Game:
         self.publisher.publish(msg)
 
     def run(self, visualizer:bool=False, walls:bool=False, useKeys:bool=False):
-        """Main logic function to keep track of gamestate. Takes input from ros messages
+        """Main logic function to keep track of gamestate. Takes input from ROS messages
         :param visualizer: Toggles rendering of the simulation. Significantly reduces sim performance when rendered for remote client
         :type visualizer: bool
         :param walls: Toggles the walls of the field on or off, no walls also disables goal checks
@@ -419,9 +465,32 @@ class Game:
         self.node.destroy_node()
         rclpy.shutdown()
 
-# if __name__ == '__main__':
-#     game = Game()
-#     game.run(walls=True, useKeys=True, visualizer=True)
-def main():
-    game = Game()
-    game.run(walls=True, useKeys=True, visualizer=True)
+def main(args = None):
+    import time
+    class tester(rclpy.Node):
+        def printFieldState(self, msg):
+            self.recievedMessage = True
+            self.get_logger.info("recieved:")
+            self.get_logger.info(f"Ball Pose: x:{msg.ball_pose.x}, y:{msg.ball_pose.y}, id:{msg.ball_pose.id}")
+            self.get_logger.info(f"Car Pose: x:{msg.team1_poses[0].x}, y:{msg.team1_poses[0].y}, angle: {msg.team1_poses[0].angle}, id:{msg.team1_poses[0].id}")
+        
+        def broadcast(self):
+            self.get_logger().info("sending message")
+            send = CarAction()
+            send.id = 0
+            send.throttle = 1.0
+            send.steer = 1.0
+            self.publisher_.publish(send)
+        
+        def __init__(self):
+            super().__init__("tester")
+            self.recievedMessage = False
+            self.subscriptions = self.create_subscription(Field, "simTopic", self.printFieldState, 10)
+            self.publisher_ = self.create_publisher(CarAction, "aiTopic", 10)
+
+    rclpy.init()
+    testerNode = tester()
+    while not testerNode.recievedMessage:
+        testerNode.broadcast()
+        time.sleep(1)
+    rclpy.spin(testerNode)
