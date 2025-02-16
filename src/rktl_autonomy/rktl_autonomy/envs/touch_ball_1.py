@@ -1,9 +1,15 @@
-
 import numpy as np
+from enum import Enum
 
 import gymnasium as gym
 import math
 from gymnasium import spaces
+import pygame
+
+class Actions(Enum):
+    TURN_R = 0
+    TURN_L = 1
+    FORWARD = 2
 
 class TouchBallNoPhysicsEnv(gym.Env):
     metadata = {"render_modes": ["human", "rgb_array"], "render_fps": 24}
