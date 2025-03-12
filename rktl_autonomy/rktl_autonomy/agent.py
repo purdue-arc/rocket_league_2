@@ -24,22 +24,20 @@ class ROS2Agent(Node):
             10
         )
         # Create publisher for action messages
-        self.action_publisher = self.create_publisher(Field, self.action_topic, 10)
+        self.action_publisher = self.create_publisher(CarAction, self.action_topic, 10)
         
     def state_callback(self, msg):
         # Parse the incoming state message.
-        # Assume msg.ball and msg.car each have: id, x, y, angle_degrees.
         observation = np.array([
             msg.ball.id, msg.ball.x, msg.ball.y, msg.ball.angle_degrees,
             msg.car.id,  msg.car.x,  msg.car.y,  msg.car.angle_degrees,
         ], dtype=np.float64)
         
         # Predict an action using your AI model.
-        action, _ = self.model.predict(observation, deterministic=True)
+        action, _ = self.model.predict(observation, deterministic=False)
         
         # Package the predicted action into a ROS2 message.
         action_msg = CarAction()
-        # Assuming your action message has fields 'x' and 'y' for the two floats.
         action_msg.id = 0
         action_msg.throttle = float(action[0])
         action_msg.steer = float(action[1])
