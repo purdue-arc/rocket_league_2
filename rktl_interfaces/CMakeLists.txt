@@ -27,6 +27,7 @@ rosidl_generate_interfaces(${PROJECT_NAME}
   "msg/CarAction.msg"
   "msg/Field.msg"
   "msg/Pose.msg"
+  "msg/Ready.msg"
 )
 
 ament_package()
