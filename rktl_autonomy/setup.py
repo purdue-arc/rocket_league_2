@@ -20,7 +20,8 @@ setup(
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
-            'train_agent = rktl_autonomy.train_agent:main'
+            'train_agent = rktl_autonomy.train_agent:main',
+            'dummy_sim = rktl_autonomy.dummy_sim:main'
         ],
     },
 )
