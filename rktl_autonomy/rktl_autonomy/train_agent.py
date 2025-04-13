@@ -1,6 +1,7 @@
 import rclpy
 from rclpy.node import Node
 from std_msgs.msg import String
+from rktl_autonomy.test_ros import TestRos
 
 class TrainAgent(Node):
     
@@ -19,7 +20,10 @@ class TrainAgent(Node):
         self.i += 1
 
 def main(args=None):
-    rclpy.init(args=args)
+    
+    env = TestRos()
+    
+    '''rclpy.init(args=args)
 
     minimal_publisher = TrainAgent()
 
@@ -30,7 +34,7 @@ def main(args=None):
     # when the garbage collector destroys the node object)
     minimal_publisher.destroy_node()
     rclpy.shutdown()
-
+    '''
 
 if __name__ == '__main__':
     main()
