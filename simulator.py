@@ -53,6 +53,8 @@ class Car:
     :type space: class: `pymunk.space`
     :param angle: Starting rotational angle (in degrees) for the car, where 0 degrees is East
     :type angle: float
+    :param controllerKeys: Tuple of 4 ints that determines which keys to listen to
+    :type controllerKeys: tuble[int,int,int,int]
     """
     def __init__(
         self,
@@ -60,7 +62,13 @@ class Car:
         x:float,
         y:float,
         space:pymunk.Space,
-        angle:float
+        angle:float,
+        controllerKeys:tuple[int, int, int, int] = (
+            pygame.K_UP,
+            pygame.K_DOWN,
+            pygame.K_LEFT,
+            pygame.K_RIGHT
+        )
     ):
         """Constructor method"""
         self.body = pymunk.Body(CAR_MASS, pymunk.moment_for_box(CAR_MASS, CAR_SIZE))
@@ -78,6 +86,8 @@ class Car:
 
         self.steering = 0.0 # Rate of steering
         self.reverse = 1 # Stores which direction car moves, 1 for forwards and -1 for backwards
+        
+        self.controllerKeys = controllerKeys
 
     def keyUpdate(self, keys:pygame.key.ScancodeWrapper):
         """Calculates the needed motion of the car class called. Takes user keyboard inputs for controls
@@ -87,7 +97,7 @@ class Car:
         self.forward_direction = pymunk.Vec2d(cos(self.body.angle), sin(self.body.angle))
         self.impulse = pymunk.Vec2d(1, 0) * CAR_SPEED
 
-        if keys[pygame.K_UP]:  # Move forward
+        if keys[self.controllerKeys[0]]:  # Move forward
             if self.reverse == 1:
                 self.body.apply_impulse_at_local_point(self.impulse)
             else:
@@ -95,7 +105,7 @@ class Car:
             if self.body.velocity.length < 5:
                 self.reverse = 1
               
-        elif keys[pygame.K_DOWN]:  # Move backward
+        elif keys[self.controllerKeys[1]]:  # Move backward
             if self.reverse == -1:
                 self.body.apply_impulse_at_local_point(-self.impulse)
             else:
@@ -114,9 +124,9 @@ class Car:
         
         #Turning the car
         self.turning_radius = CAR_SIZE[0] / sin(radians(CAR_TURN))
-        if keys[pygame.K_LEFT]:  # Turn left
+        if keys[self.controllerKeys[2]]:  # Turn left
             self.body.angular_velocity = self.body.velocity.length / -self.turning_radius * self.reverse
-        elif keys[pygame.K_RIGHT]:  # Turn right
+        elif keys[self.controllerKeys[3]]:  # Turn right
             self.body.angular_velocity = self.body.velocity.length / self.turning_radius * self.reverse
         else:
             self.body.angular_velocity = 0  # Stop turning when no key is pressed
@@ -301,12 +311,13 @@ class Game:
     def addDefaultObjects(self) -> None:
         """Adds new ball and car objects to the field according to the contents of self.carStartList"""
         self.ball = Ball(self.ballPosition[0], self.ballPosition[1], self.gameSpace)
+        multiControlList = [(pygame.K_UP, pygame.K_DOWN, pygame.K_LEFT, pygame.K_RIGHT), (pygame.K_w, pygame.K_s, pygame.K_a, pygame.K_d)]
         for i, c in enumerate(self.carStartList): #loops through list of start cars, creates new car object for each car listed
             self.inputs.append([0,0]) #reset's car controls
             if len(c) == 4: #Specifies starting angle if not given
-                self.cars.append(Car(c[0],c[1], c[2],self.gameSpace, c[3]))
+                self.cars.append(Car(c[0],c[1], c[2],self.gameSpace, c[3], controllerKeys=multiControlList[i]))
             else:
-                self.cars.append(Car(c[0],c[1],c[2],self.gameSpace, 0))
+                self.cars.append(Car(c[0],c[1],c[2],self.gameSpace, 0, controllerKeys=multiControlList[i]))
     
     def updateObjects(self, walls:bool, useKeys:bool):
         """Updates controls for all objects currently on the field. Also decelerates the ball.
