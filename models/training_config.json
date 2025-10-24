@@ -1,0 +1,16 @@
+{
+  "field_width": 304.8,
+  "field_height": 426.72,
+  "max_episode_steps": 1000,
+  "reward_scale": 1.0,
+  "algorithm": "PPO",
+  "total_timesteps": 100000,
+  "learning_rate": 0.0003,
+  "batch_size": 64,
+  "buffer_size": 10000,
+  "eval_freq": 10000,
+  "n_eval_episodes": 10,
+  "eval_reward_threshold": 50.0,
+  "policy": "MlpPolicy",
+  "timestamp": "2025-10-24T19:21:08.066922"
+}
