@@ -285,7 +285,7 @@ class RocketLeagueSB3Env(gym.Env):
         reward += self._calculate_positional_rewards(prev_distance, current_distance)
         
         # === BASIC EFFICIENCY ===
-        reward -= 0.05  # Small step penalty (reduced from 0.1)
+        reward -= 0.01  # Minimal step penalty (further reduced)
         
         return reward * self.reward_scale
     
@@ -298,15 +298,15 @@ class RocketLeagueSB3Env(gym.Env):
         # a. Ball Control and Attacking
         if terminated:
             # Successfully reached the ball - base reward
-            reward += 100.0
+            reward += 1000.0  # Increased from 100.0
             
             # Bonus for good approach angle (within 30 degrees of optimal)
             if angle_diff_after < 30:
-                reward += 50.0  # High-quality approach
+                reward += 500.0  # High-quality approach (increased from 50.0)
             elif angle_diff_after < 60:
-                reward += 25.0  # Decent approach
+                reward += 250.0  # Decent approach (increased from 25.0)
             else:
-                reward += 10.0  # Poor approach
+                reward += 100.0  # Poor approach (increased from 10.0)
         
         # Reward for approaching ball intelligently
         distance_improvement = prev_distance - current_distance
@@ -314,19 +314,27 @@ class RocketLeagueSB3Env(gym.Env):
             # Bonus for good approach speed (not too fast, not too slow)
             current_speed = np.linalg.norm(self._agent_location - self._prev_location) if hasattr(self, '_prev_location') else 0
             if 3.0 <= current_speed <= 8.0:  # Optimal speed range
-                reward += distance_improvement * 5.0  # High reward for good approach
+                reward += distance_improvement * 20.0  # High reward for good approach (increased from 5.0)
             else:
-                reward += distance_improvement * 2.0  # Standard reward
+                reward += distance_improvement * 10.0  # Standard reward (increased from 2.0)
         
         # Reward for maintaining good angle to ball
         if angle_diff_after < 45:  # Good angle to ball
-            reward += 2.0
+            reward += 10.0  # Increased from 2.0
         elif angle_diff_after < 90:  # Decent angle
-            reward += 1.0
+            reward += 5.0  # Increased from 1.0
         
         # Penalty for poor positioning (too close without good angle)
         if current_distance < 20 and angle_diff_after > 90:
             reward -= 5.0  # Poor positioning penalty
+        
+        # Progressive rewards for getting closer to ball
+        if current_distance < 50:
+            reward += 20.0  # Very close to ball
+        elif current_distance < 100:
+            reward += 10.0  # Close to ball
+        elif current_distance < 200:
+            reward += 5.0   # Getting close
         
         return reward
     
@@ -348,13 +356,13 @@ class RocketLeagueSB3Env(gym.Env):
         # a. Goal Defense (Blocking Shots)
         if ball_goal_distance < 100:  # Ball is near our goal
             if goal_distance < 50:  # We're in defensive position
-                reward += 10.0  # Good defensive positioning
+                reward += 50.0  # Good defensive positioning (increased from 10.0)
                 
                 # Bonus for being between ball and goal
                 ball_to_goal = np.array([goal_x, goal_y]) - self._ball_location
                 agent_to_goal = np.array([goal_x, goal_y]) - self._agent_location
                 if np.dot(ball_to_goal, agent_to_goal) > 0:  # We're between ball and goal
-                    reward += 15.0  # Excellent defensive positioning
+                    reward += 75.0  # Excellent defensive positioning (increased from 15.0)
         
         # b. Clearance and Positioning for Defense
         if current_distance < 30:  # Close to ball

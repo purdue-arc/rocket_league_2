@@ -12,5 +12,5 @@
   "n_eval_episodes": 10,
   "eval_reward_threshold": 50.0,
   "policy": "MlpPolicy",
-  "timestamp": "2025-10-24T19:21:08.066922"
+  "timestamp": "2025-10-24T19:36:42.902761"
 }
