@@ -4,10 +4,7 @@ import pygame
 import pymunk
 import pymunk.pygame_util
 
-import rclpy
-from rktl_interfaces.msg import Field, Pose, CarAction
-
-#Field Specs
+# Field Specs
 FIELD_WIDTH = 426.72
 FIELD_HEIGHT = 304.8
 GOAL_HEIGHT = 81.28
@@ -17,8 +14,8 @@ FIELD_FRICTION = 0.3
 FIELD_ELASTICITY = 0.5
 FIELD_COLOR = pygame.Color("white")
 
-#Car Specs
-CAR_SIZE = (16.5, 8.5) # (Length, Width)
+# Car Specs
+CAR_SIZE = (16.5, 8.5)  # (Length, Width)
 CAR_MASS = 5
 CAR_SPEED = 5  # Impulse applied for forward/backward movement
 CAR_TURN = 30  # Angular velocity for car turning
@@ -27,19 +24,21 @@ FREE_DECELERATION = 0.5  # Rate velocity decreases with no input
 CAR_FRICTION = 0.5
 CAR_COLOR = pygame.Color("green")
 CAR_COLOR_ALT = pygame.Color("red")
-CAR_POS = [[True, (FIELD_WIDTH + GOAL_DEPTH) / 3,FIELD_HEIGHT / 2],[False, 2 * (FIELD_WIDTH + GOAL_DEPTH) / 3,FIELD_HEIGHT / 2,180]]
+CAR_POS = [[True, (FIELD_WIDTH + GOAL_DEPTH) / 3, FIELD_HEIGHT / 2],
+           [False, 2 * (FIELD_WIDTH + GOAL_DEPTH) / 3, FIELD_HEIGHT / 2, 180]]
 
-#Ball Specs
+# Ball Specs
 BALL_MASS = 0.1
 BALL_RADIUS = 6.85 / 2
-BALL_POS = (FIELD_WIDTH + GOAL_DEPTH) / 2, FIELD_HEIGHT / 2 # Starting position of the ball (x, y)
+BALL_POS = (FIELD_WIDTH + GOAL_DEPTH) / 2, FIELD_HEIGHT / 2  # Starting position of the ball (x, y)
 BALL_ELASTICITY = 1
 BALL_FRICTION = 0.5
 BALL_DECELERATION = 0.1
 BALL_COLOR = pygame.Color("blue")
 
-#Sim Limits
-MAX_SPEED = 200 # Max speed limit of the cars
+# Sim Limits
+MAX_SPEED = 200  # Max speed limit of the cars
+
 
 class Car:
     """Class used to define each car in the simulator.
@@ -54,13 +53,14 @@ class Car:
     :param angle: Starting rotational angle (in degrees) for the car, where 0 degrees is East
     :type angle: float
     """
+
     def __init__(
-        self,
-        team:bool,
-        x:float,
-        y:float,
-        space:pymunk.Space,
-        angle:float
+            self,
+            team: bool,
+            x: float,
+            y: float,
+            space: pymunk.Space,
+            angle: float
     ):
         """Constructor method"""
         self.body = pymunk.Body(CAR_MASS, pymunk.moment_for_box(CAR_MASS, CAR_SIZE))
@@ -78,10 +78,10 @@ class Car:
         self.space = space
         self.space.add(self.body, self.shape)
 
-        self.steering = 0.0 # Rate of steering
-        self.reverse = 1 # Stores which direction car moves, 1 for forwards and -1 for backwards
+        self.steering = 0.0  # Rate of steering
+        self.reverse = 1  # Stores which direction car moves, 1 for forwards and -1 for backwards
 
-    def keyUpdate(self, keys:pygame.key.ScancodeWrapper):
+    def keyUpdate(self, keys: pygame.key.ScancodeWrapper):
         """Calculates the needed motion of the car class called. Takes user keyboard inputs for controls
         :param keys: Passes :class: 'pygame.key.ScancodeWrapper' class to allow input handling
         :type keys: class: 'pygame.key.ScancodeWrapper'
@@ -96,7 +96,7 @@ class Car:
                 self.body.apply_impulse_at_local_point(self.impulse * BRAKE_SPEED)
             if self.body.velocity.length < 5:
                 self.reverse = 1
-              
+
         elif keys[pygame.K_DOWN]:  # Move backward
             if self.reverse == -1:
                 self.body.apply_impulse_at_local_point(-self.impulse)
@@ -111,10 +111,10 @@ class Car:
             elif self.reverse == 1:
                 self.body.apply_impulse_at_local_point(-self.impulse * BRAKE_SPEED)
         else:
-            #Simulates deceleration when no movement command is given
+            # Simulates deceleration when no movement command is given
             self.body.velocity = (self.body.velocity.length - FREE_DECELERATION) * self.forward_direction * self.reverse
-        
-        #Turning the car
+
+        # Turning the car
         self.turning_radius = CAR_SIZE[0] / sin(radians(CAR_TURN))
         if keys[pygame.K_LEFT]:  # Turn left
             self.body.angular_velocity = self.body.velocity.length / -self.turning_radius * self.reverse
@@ -122,21 +122,21 @@ class Car:
             self.body.angular_velocity = self.body.velocity.length / self.turning_radius * self.reverse
         else:
             self.body.angular_velocity = 0  # Stop turning when no key is pressed
-        
+
         # Reset drift: Set velocity to only move in the direction of the car's facing angle
         self.body.velocity = self.forward_direction * self.reverse * min(self.body.velocity.length, MAX_SPEED)
-        #Prints current velocity
-        #print("\rVelocity:{:0.2f}".format(self.body.velocity.length),end="")
+        # Prints current velocity
+        # print("\rVelocity:{:0.2f}".format(self.body.velocity.length),end="")
 
-    def update(self, controls:tuple[float,float]):
+    def update(self, controls: tuple[float, float]):
         """Calculates the needed motion of the car class called. Takes tuples which will be transmitted through ros messages for controls.
-        
+
         :param controls: First float controls forward throttle percentage, ranging from 1 to -1.
             Second float controls turn angle percentage, positive is right and negative is left. Ranges from 1 to -1.
         :type controls: tuple[float,float]
         """
         self.forward_direction = pymunk.Vec2d(cos(self.body.angle), sin(self.body.angle))
-        
+
         self.impulse = pymunk.Vec2d(1, 0) * CAR_SPEED
         if controls[0] > 0:
             if self.reverse == 1:
@@ -165,21 +165,21 @@ class Car:
             self.body.angular_velocity = self.body.velocity.length / self.turning_radius * controls[1] * self.reverse
         else:
             self.body.angular_velocity = 0  # Stop turning when no key is pressed
-        
+
         # Reset drift: Set velocity to only move in the direction of the car's facing angle
         self.body.velocity = self.forward_direction * self.reverse * min(self.body.velocity.length, MAX_SPEED)
 
     def getPos(self) -> pymunk.vec2d.Vec2d:
         """Returns the car's current x and y position. Individual positions can be called through getPos().x and getPos().y
-        
+
         :return: List of positional coordinates in :class:`pymunk.vec2d.Vec2d` format
         :rtype: :class:`pymunk.vec2d.Vec2d`
         """
         return self.body.position
-    
+
     def getVelocity(self) -> pymunk.vec2d.Vec2d:
         """Returns the car's current velocity.
-        
+
         :return: Current velocity in the :class:`pymunk.vec2d.Vec2d` format
         :rtype: :class:`pymunk.vec2d.Vec2d`
         """
@@ -187,7 +187,7 @@ class Car:
 
     def getAngle(self) -> float:
         """Returns the car's current angle in degrees
-        
+
         :return: Current angle in degrees clockwise from east
         :rtype: float
         """
@@ -198,9 +198,9 @@ class Car:
 
         :param pos: A tuple or vector of the position (x, y)
         :type pos: tuple[float, float] | pymunk.vec2d.Vec2d
-        """        
+        """
         self.body._set_position(pos)
-    
+
     def setVel(self, vel: tuple[float, float] | pymunk.vec2d.Vec2d):
         """Sets the car's velocity
 
@@ -208,15 +208,15 @@ class Car:
         :type vel: tuple[float, float] | pymunk.vec2d.Vec2d
         """
         self.body._set_velocity(vel)
-    
+
     def setAngle(self, angle: float):
         """Set's the car's angle
 
         :param angle: The angle in degrees cw from east
         :type angle: float
-        """        
+        """
         self.body._set_angle(angle)
-        
+
 
 class Ball:
     """Class used to define the soccer ball
@@ -229,12 +229,13 @@ class Ball:
     :param impulse: Starting impulse applied to the ball at object creation (defaults to no impulse)
     :type imlpulse: class: `pymunk.Vec2d`
     """
+
     def __init__(
-        self,
-        x:float,
-        y:float,
-        space:pymunk.Space,
-        impulse:pymunk.Vec2d=pymunk.Vec2d(0,0)
+            self,
+            x: float,
+            y: float,
+            space: pymunk.Space,
+            impulse: pymunk.Vec2d = pymunk.Vec2d(0, 0)
     ):
         """Constructor method"""
         self.inertia = pymunk.moment_for_circle(BALL_MASS, 0, BALL_RADIUS)
@@ -250,40 +251,41 @@ class Ball:
         self.space.add(self.body, self.shape)
 
         self.body.apply_impulse_at_local_point(impulse)
-    
+
     def decelerate(self):
         """Gradually reduces the velocity of the ball to simulate friction."""
         self.body.velocity = (self.body.velocity.length - BALL_DECELERATION) * self.body.velocity.normalized()
-    
+
     def getPos(self) -> pymunk.vec2d.Vec2d:
         """Returns the ball's current x and y position. Individual positions can be called through getPos().x and getPos().y
         :return: List of positional coordinates in :class:`pymunk.vec2d.Vec2d` format
         :rtype: :class:`pymunk.vec2d.Vec2d`
         """
         return self.body.position
-    
+
     def getVelocity(self) -> pymunk.vec2d.Vec2d:
         """Returns the ball's current velocity
         :return: Current velocity in the :class:`pymunk.vec2d.Vec2d` format
         :rtype: :class:`pymunk.vec2d.Vec2d`
         """
         return self.body.velocity
-    
+
     def setPos(self, pos: tuple[float, float] | pymunk.vec2d.Vec2d):
         """Set's the ball's position
 
         :param pos: A tuple or vector of the position (x, y)
         :type pos: tuple[float, float] | pymunk.vec2d.Vec2d
-        """        
+        """
         self.body._set_position(pos)
-    
+
     def setVelocity(self, vel: tuple[float, float] | pymunk.vec2d.Vec2d):
         """Set's the ball's velocity
 
         :param vel: A tuple or vector of the velocity (x, y)
         :type vel: tuple[float, float] | pymunk.vec2d.Vec2d
-        """        
-        self.body._set_velocity(vel)        
+        """
+        self.body._set_velocity(vel)
+
 
 class Game:
     """Gamestate object that handles simulation of physics and handling of inputs.
@@ -293,10 +295,11 @@ class Game:
     :param ballPosition: Tuple for x and y start positions of the ball. Defaults to center of the field.
     :type ballPosition: tuple[float, float]
     """
-    def __init__( #TODO: add publisher logic
-        self,
-        carStartList:list[tuple[bool, float, float, float] | tuple[bool, float, float]] = CAR_POS,
-        ballPosition:tuple[float, float] = BALL_POS
+
+    def __init__(
+            self,
+            carStartList: list[tuple[bool, float, float, float] | tuple[bool, float, float]] = CAR_POS,
+            ballPosition: tuple[float, float] = BALL_POS
     ):
         """Constructor method"""
         pygame.init()
@@ -314,13 +317,13 @@ class Game:
         self.exit = False
 
         self.gameSpace = pymunk.Space()
-    
+
     def checkGoal(
-        self,
-        leftgoal:float,
-        rightgoal:float,
-        topgoal:float,
-        botgoal:float
+            self,
+            leftgoal: float,
+            rightgoal: float,
+            topgoal: float,
+            botgoal: float
     ):
         """Checks to see if ball position is in a goal, then calculates new score and resets the field.
             If ball leaves bounds without entering a goal, reset the field without scoring points.
@@ -349,14 +352,14 @@ class Game:
     def addObjects(self):
         """Adds new ball and car objects to the field according to the contents of self.carStartList"""
         self.ball = Ball(self.ballPosition[0], self.ballPosition[1], self.gameSpace)
-        for c in self.carStartList: #loops through list of start cars, creates new car object for each car listed
-            self.inputs.append([0,0]) #reset's car controls
-            if len(c) == 4: #Specifies starting angle if not given
-                self.cars.append(Car(c[0],c[1], c[2],self.gameSpace, c[3]))
+        for c in self.carStartList:  # loops through list of start cars, creates new car object for each car listed
+            self.inputs.append([0, 0])  # reset's car controls
+            if len(c) == 4:  # Specifies starting angle if not given
+                self.cars.append(Car(c[0], c[1], c[2], self.gameSpace, c[3]))
             else:
-                self.cars.append(Car(c[0],c[1],c[2],self.gameSpace, 0))
-    
-    def updateObjects(self, walls:bool, useKeys:bool):
+                self.cars.append(Car(c[0], c[1], c[2], self.gameSpace, 0))
+
+    def updateObjects(self, walls: bool, useKeys: bool):
         """Updates controls for all objects currently on the field. Also decelerates the ball.
         :param walls: Indicates whether field walls are enabled. Does not calculate goals if false.
         :type walls: bool
@@ -372,65 +375,46 @@ class Game:
                 try:
                     c.update(self.inputs[i])
                 except:
-                    c.update([0,0])
+                    c.update([0, 0])
         self.ball.decelerate()
         if walls:
             self.checkGoal(GOAL_DEPTH, FIELD_WIDTH, SIDE_WALL, SIDE_WALL + GOAL_HEIGHT)
 
-    def handleInputs(self, msg):
-        for i in msg:
-            self.inputs[i.id] = [i.x, i.y]
-
-    def broadcast(self):
-        msg = Field()
-        msg.ball_pose.id = -1
-        msg.ball_pose.x = self.ball.getPos().x
-        msg.ball_pose.y = self.ball.getPos().y
-        msg.ball_pose.angle_degrees = 0.0
-        for i, c in enumerate(self.cars):
-            tempPos = Pose()
-            tempPos.id = i
-            tempPos.x = c.getPos().x
-            tempPos.y = c.getPos().y
-            tempPos.angle_degrees = c.getAngle()
-            if c.team:
-                msg.team1_poses.append(tempPos)
-            else:
-                msg.team2_poses.append(tempPos)
-        self.publisher.publish(msg)
-
-    def run(self, visualizer:bool=False, walls:bool=False, useKeys:bool=False):
-        """Main logic function to keep track of gamestate. Takes input from ROS messages
-        :param visualizer: Toggles rendering of the simulation. Significantly reduces sim performance when rendered for remote client
+    def run(self, visualizer: bool = True, walls: bool = True, useKeys: bool = True):
+        """Main logic function to keep track of gamestate.
+        :param visualizer: Toggles rendering of the simulation.
         :type visualizer: bool
         :param walls: Toggles the walls of the field on or off, no walls also disables goal checks
         :type walls: bool
-        :param useKeys: Toggles between usage of keyboard inputs or ros messages
+        :param useKeys: Toggles between usage of keyboard inputs or programmatic control
         :type useKeys: bool
         """
         self.addObjects()
-        rclpy.init()
-        self.node = rclpy.create_node("sim_data")
-        self.node.create_subscription(CarAction, "CarAction", lambda msg: self.handleInputs(msg), 10)
-        self.publisher = self.node.create_publisher(Field, 'FieldState', 10)
-        
+
         # Walls in Field
         if walls:
             self.static_lines = [
                 pymunk.Segment(self.gameSpace.static_body, (GOAL_DEPTH, 0.0), (FIELD_WIDTH, 0.0), 0.0),
-                pymunk.Segment(self.gameSpace.static_body, (FIELD_WIDTH, FIELD_HEIGHT), (GOAL_DEPTH, FIELD_HEIGHT), 0.0),
+                pymunk.Segment(self.gameSpace.static_body, (FIELD_WIDTH, FIELD_HEIGHT), (GOAL_DEPTH, FIELD_HEIGHT),
+                               0.0),
 
                 pymunk.Segment(self.gameSpace.static_body, (FIELD_WIDTH, 0.0), (FIELD_WIDTH, SIDE_WALL), 0.0),
-                pymunk.Segment(self.gameSpace.static_body, (FIELD_WIDTH, SIDE_WALL), (FIELD_WIDTH + GOAL_DEPTH, SIDE_WALL), 0.0),
-                pymunk.Segment(self.gameSpace.static_body, (FIELD_WIDTH + GOAL_DEPTH, SIDE_WALL), (FIELD_WIDTH + GOAL_DEPTH, GOAL_HEIGHT + SIDE_WALL), 0.0),
-                pymunk.Segment(self.gameSpace.static_body, (FIELD_WIDTH, GOAL_HEIGHT + SIDE_WALL), (FIELD_WIDTH + GOAL_DEPTH, SIDE_WALL + GOAL_HEIGHT), 0.0),
-                pymunk.Segment(self.gameSpace.static_body, (FIELD_WIDTH, GOAL_HEIGHT + SIDE_WALL), (FIELD_WIDTH, FIELD_HEIGHT), 0.0),
+                pymunk.Segment(self.gameSpace.static_body, (FIELD_WIDTH, SIDE_WALL),
+                               (FIELD_WIDTH + GOAL_DEPTH, SIDE_WALL), 0.0),
+                pymunk.Segment(self.gameSpace.static_body, (FIELD_WIDTH + GOAL_DEPTH, SIDE_WALL),
+                               (FIELD_WIDTH + GOAL_DEPTH, GOAL_HEIGHT + SIDE_WALL), 0.0),
+                pymunk.Segment(self.gameSpace.static_body, (FIELD_WIDTH, GOAL_HEIGHT + SIDE_WALL),
+                               (FIELD_WIDTH + GOAL_DEPTH, SIDE_WALL + GOAL_HEIGHT), 0.0),
+                pymunk.Segment(self.gameSpace.static_body, (FIELD_WIDTH, GOAL_HEIGHT + SIDE_WALL),
+                               (FIELD_WIDTH, FIELD_HEIGHT), 0.0),
 
                 pymunk.Segment(self.gameSpace.static_body, (GOAL_DEPTH, SIDE_WALL), (GOAL_DEPTH, 0.0), 0.0),
                 pymunk.Segment(self.gameSpace.static_body, (GOAL_DEPTH, SIDE_WALL), (0, SIDE_WALL), 0.0),
                 pymunk.Segment(self.gameSpace.static_body, (0, SIDE_WALL), (0, GOAL_HEIGHT + SIDE_WALL), 0.0),
-                pymunk.Segment(self.gameSpace.static_body, (GOAL_DEPTH, GOAL_HEIGHT + SIDE_WALL), (0, SIDE_WALL + GOAL_HEIGHT), 0.0),
-                pymunk.Segment(self.gameSpace.static_body, (GOAL_DEPTH, GOAL_HEIGHT + SIDE_WALL), (GOAL_DEPTH, FIELD_HEIGHT), 0.0),
+                pymunk.Segment(self.gameSpace.static_body, (GOAL_DEPTH, GOAL_HEIGHT + SIDE_WALL),
+                               (0, SIDE_WALL + GOAL_HEIGHT), 0.0),
+                pymunk.Segment(self.gameSpace.static_body, (GOAL_DEPTH, GOAL_HEIGHT + SIDE_WALL),
+                               (GOAL_DEPTH, FIELD_HEIGHT), 0.0),
             ]
             for l in self.static_lines:
                 l.friction = FIELD_FRICTION
@@ -447,50 +431,26 @@ class Game:
 
             # User input
             self.updateObjects(walls, useKeys)
-            self.broadcast()
 
             # Drawing
-            print("\rLeft: ", self.leftscore, " Right: ", self.rightscore,end="")
+            print("\rLeft: ", self.leftscore, " Right: ", self.rightscore, end="")
             if visualizer:
                 pygame.display.set_caption("fps: " + "{:.2f}".format(self.clock.get_fps()))
                 self.screen.fill(pygame.Color("white"))
                 self.gameSpace.debug_draw(self.draw_options)
                 pygame.display.update()
             else:
-                print(" | fps: " + "{:.2f}".format(self.clock.get_fps()),end="")
+                print(" | fps: " + "{:.2f}".format(self.clock.get_fps()), end="")
 
             self.gameSpace.step(self.dt)
             self.clock.tick(self.ticks)
         pygame.quit()
-        self.node.destroy_node()
-        rclpy.shutdown()
 
-def main(args = None):
-    import time
-    class tester(rclpy.Node):
-        def printFieldState(self, msg):
-            self.recievedMessage = True
-            self.get_logger.info("recieved:")
-            self.get_logger.info(f"Ball Pose: x:{msg.ball_pose.x}, y:{msg.ball_pose.y}, id:{msg.ball_pose.id}")
-            self.get_logger.info(f"Car Pose: x:{msg.team1_poses[0].x}, y:{msg.team1_poses[0].y}, angle: {msg.team1_poses[0].angle}, id:{msg.team1_poses[0].id}")
-        
-        def broadcast(self):
-            self.get_logger().info("sending message")
-            send = CarAction()
-            send.id = 0
-            send.throttle = 1.0
-            send.steer = 1.0
-            self.publisher_.publish(send)
-        
-        def __init__(self):
-            super().__init__("tester")
-            self.recievedMessage = False
-            self.subscriptions = self.create_subscription(Field, "simTopic", self.printFieldState, 10)
-            self.publisher_ = self.create_publisher(CarAction, "aiTopic", 10)
 
-    rclpy.init()
-    testerNode = tester()
-    while not testerNode.recievedMessage:
-        testerNode.broadcast()
-        time.sleep(1)
-    rclpy.spin(testerNode)
+def main(args=None):
+    game = Game()
+    game.run(visualizer=True, walls=True, useKeys=True)
+
+
+if __name__ == "__main__":
+    main()
