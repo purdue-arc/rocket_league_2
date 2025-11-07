@@ -2,20 +2,22 @@ import random
 
 import pygame
 import pymunk
-import rclpy
-from rclpy.node import Node
 from rktl_simulator.simulator import (BALL_POS, CAR_POS, FIELD_HEIGHT, FIELD_WIDTH,
-                       GOAL_DEPTH, Ball, Car)
+                       GOAL_DEPTH, Ball, Car, Game)
+import numpy as np
 
-from rktl_interfaces.msg import CarAction, Field, Pose
+import gymnasium as gym
+from gymnasium import spaces
 
-
-class PointGame(Node):
+class PointGame(gym.Env):
     def __init__(
         self,
+        team:int,
         carStartList:list[tuple[bool, float, float, float] | tuple[bool, float, float]] = CAR_POS,
-        ballPosition:tuple[float, float] = BALL_POS
+        ballPosition:tuple[float, float] = BALL_POS,
     ):
+        super().__init__()
+
         """Constructor method
 
         :param carStartList: Positions of cars, defaults to CAR_POS
@@ -24,25 +26,23 @@ class PointGame(Node):
         :type ballPosition: tuple[float, float], optional
         """        """Constructor method"""
         
-        super().__init__("point_game_node")
-        pygame.init()
-        self.screen = pygame.display.set_mode((FIELD_WIDTH + GOAL_DEPTH, FIELD_HEIGHT))
-        self.draw_options = pymunk.pygame_util.DrawOptions(self.screen)
-        self.clock = pygame.time.Clock()
+        assert team in (0, 1)
 
-        self.leftscore = 0
-        self.rightscore = 0
-        self.ticks = 60
-        self.ballPosition = ballPosition
-        self.carStartList = carStartList
-        self.cars = []
-        self.inputs = []
-        self.exit = False
+        self.action_space = spaces.Box(
+            low=np.array([-1, -30, -1, -30], dtype=np.float32),
+            high=np.array([ 1,  30,  1,  30], dtype=np.float32),
+            dtype=np.float32
+        )
 
-        self.gameSpace = pymunk.Space()
-        
-        self.publisher_ = self.create_publisher(Field, "simTopic", 10)
-        self.subscriber_ = self.create_subscription(CarAction, "aiTopic", self.runAStep, 10)
+        self.observation_space = spaces.Box(
+            low=-np.finfo(np.float32).max,
+            high=np.finfo(np.float32).max,
+            shape=(42,),
+            dtype=np.float32,
+        )
+
+        self.game = Game(carStartList, ballPosition)
+
         
     def run(self):
         """Main logic function to keep track of gamestate. Steps 0.1 seconds with each SPACE key press.
