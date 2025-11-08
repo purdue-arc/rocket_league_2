@@ -319,6 +319,7 @@ class Game:
         self.ticks = 60
         self.ballPosition = ballPosition
         self.carStartList = carStartList
+        self.time_left = 120
         print(len(carStartList))
         self.cars = []
         self.inputs = []
@@ -403,6 +404,12 @@ class Game:
         if walls:
             self.checkGoal(GOAL_DEPTH, FIELD_WIDTH, SIDE_WALL, SIDE_WALL + GOAL_HEIGHT)
 
+    def updateCars(self, teamID, car1, car2):
+        carList = [car for car in self.cars if car.team == teamID]
+
+        # car1[0], car1[1] throttle direction
+        
+
     def run(self, visualizer: bool = True, walls: bool = True, useKeys: bool = True):
         """Main logic function to keep track of gamestate.
         :param visualizer: Toggles rendering of the simulation.
@@ -447,6 +454,7 @@ class Game:
 
         while not self.exit:
             self.dt = self.clock.get_time() / 1000
+            self.time_left = max(0.0, self.time_left - self.dt)
 
             # Quit event
             for event in pygame.event.get():
@@ -469,6 +477,68 @@ class Game:
             self.gameSpace.step(self.dt)
             self.clock.tick(self.ticks)
         pygame.quit()
+
+    def step(self, visualizer: bool = True, walls: bool = True, useKeys: bool = True):
+        """Perform a single step of the game simulation.
+        :param visualizer: Toggles rendering of the simulation.
+        :type visualizer: bool
+        :param walls: Toggles the walls of the field on or off, no walls also disables goal checks
+        :type walls: bool
+        :param useKeys: Toggles between usage of keyboard inputs or programmatic control
+        :type useKeys: bool
+        """
+        if not hasattr(self, "static_lines_initialized"):
+            # Initialize objects and walls only once
+            self.addDefaultObjects()
+            
+            if walls:
+                self.static_lines = [
+                    pymunk.Segment(self.gameSpace.static_body, (GOAL_DEPTH, 0.0), (FIELD_WIDTH, 0.0), 0.0),
+                    pymunk.Segment(self.gameSpace.static_body, (FIELD_WIDTH, FIELD_HEIGHT), (GOAL_DEPTH, FIELD_HEIGHT), 0.0),
+                    pymunk.Segment(self.gameSpace.static_body, (FIELD_WIDTH, 0.0), (FIELD_WIDTH, SIDE_WALL), 0.0),
+                    pymunk.Segment(self.gameSpace.static_body, (FIELD_WIDTH, SIDE_WALL), (FIELD_WIDTH + GOAL_DEPTH, SIDE_WALL), 0.0),
+                    pymunk.Segment(self.gameSpace.static_body, (FIELD_WIDTH + GOAL_DEPTH, SIDE_WALL), (FIELD_WIDTH + GOAL_DEPTH, GOAL_HEIGHT + SIDE_WALL), 0.0),
+                    pymunk.Segment(self.gameSpace.static_body, (FIELD_WIDTH, GOAL_HEIGHT + SIDE_WALL), (FIELD_WIDTH + GOAL_DEPTH, SIDE_WALL + GOAL_HEIGHT), 0.0),
+                    pymunk.Segment(self.gameSpace.static_body, (FIELD_WIDTH, GOAL_HEIGHT + SIDE_WALL), (FIELD_WIDTH, FIELD_HEIGHT), 0.0),
+                    pymunk.Segment(self.gameSpace.static_body, (GOAL_DEPTH, SIDE_WALL), (GOAL_DEPTH, 0.0), 0.0),
+                    pymunk.Segment(self.gameSpace.static_body, (GOAL_DEPTH, SIDE_WALL), (0, SIDE_WALL), 0.0),
+                    pymunk.Segment(self.gameSpace.static_body, (0, SIDE_WALL), (0, GOAL_HEIGHT + SIDE_WALL), 0.0),
+                    pymunk.Segment(self.gameSpace.static_body, (GOAL_DEPTH, GOAL_HEIGHT + SIDE_WALL), (0, SIDE_WALL + GOAL_HEIGHT), 0.0),
+                    pymunk.Segment(self.gameSpace.static_body, (GOAL_DEPTH, GOAL_HEIGHT + SIDE_WALL), (GOAL_DEPTH, FIELD_HEIGHT), 0.0),
+                ]
+                for l in self.static_lines:
+                    l.friction = FIELD_FRICTION
+                    l.elasticity = FIELD_ELASTICITY
+                self.gameSpace.add(*self.static_lines)
+
+            self.static_lines_initialized = True
+
+        # Step timing
+        self.dt = self.clock.get_time() / 1000
+        self.time_left = max(0.0, self.time_left - self.dt)
+
+        # Quit event
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                self.exit = True
+
+        # Update game objects
+        self.updateObjects(walls, useKeys)
+
+        # Rendering / Visualizer
+        print("\rLeft: ", self.leftscore, " Right: ", self.rightscore, end="")
+        if visualizer:
+            pygame.display.set_caption("fps: " + "{:.2f}".format(self.clock.get_fps()))
+            self.screen.fill(pygame.Color("white"))
+            self.gameSpace.debug_draw(self.draw_options)
+            pygame.display.update()
+        else:
+            print(" | fps: " + "{:.2f}".format(self.clock.get_fps()), end="")
+
+        # Physics step
+        self.gameSpace.step(self.dt)
+        self.clock.tick(self.ticks)
+
 
 
 def main(args=None):
