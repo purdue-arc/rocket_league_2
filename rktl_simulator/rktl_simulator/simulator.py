@@ -1,4 +1,4 @@
-from math import cos, radians, sin, degrees
+from math import cos, radians, sin, tan, degrees
 
 import pygame
 import pymunk
@@ -14,6 +14,7 @@ FIELD_HEIGHT = 304.8
 GOAL_HEIGHT = 81.28
 GOAL_DEPTH = 25.4
 SIDE_WALL = (FIELD_HEIGHT - GOAL_HEIGHT) / 2
+WHEELBASE = .1 #this is an assumption, also in m
 FIELD_FRICTION = 0.3
 FIELD_ELASTICITY = 0.5
 FIELD_COLOR = pygame.Color("white")
@@ -91,6 +92,11 @@ class Car:
 
         self.steering = 0.0  # Rate of steering
         self.reverse = 1  # Stores which direction car moves, 1 for forwards and -1 for backwards
+
+
+    #this function is very new and tentative, maybe dont use it
+    def changeThrottle(self, throttle, direction):
+        self.body.angular_velocity = throttle * tan(direction)((self.body.velocity)/(WHEELBASE))
 
     def keyUpdate(self, keys:pygame.key.ScancodeWrapper):
         """Calculates the needed motion of the car class called. Takes user keyboard inputs for controls
