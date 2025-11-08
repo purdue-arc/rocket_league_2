@@ -4,6 +4,10 @@ import pygame
 import pymunk
 import pymunk.pygame_util
 
+#need to implement throttle and
+
+
+
 # Field Specs
 FIELD_WIDTH = 426.72
 FIELD_HEIGHT = 304.8
@@ -88,7 +92,7 @@ class Car:
         self.steering = 0.0  # Rate of steering
         self.reverse = 1  # Stores which direction car moves, 1 for forwards and -1 for backwards
 
-    def keyUpdate(self, keys: pygame.key.ScancodeWrapper):
+    def keyUpdate(self, keys:pygame.key.ScancodeWrapper):
         """Calculates the needed motion of the car class called. Takes user keyboard inputs for controls
         :param keys: Passes :class: 'pygame.key.ScancodeWrapper' class to allow input handling
         :type keys: class: 'pygame.key.ScancodeWrapper'
@@ -96,15 +100,15 @@ class Car:
         self.forward_direction = pymunk.Vec2d(cos(self.body.angle), sin(self.body.angle))
         self.impulse = pymunk.Vec2d(1, 0) * CAR_SPEED
 
-        if keys[pygame.K_UP]:  # Move forward
+        if keys[self.controllerKeys[0]]:  # Move forward
             if self.reverse == 1:
                 self.body.apply_impulse_at_local_point(self.impulse)
             else:
                 self.body.apply_impulse_at_local_point(self.impulse * BRAKE_SPEED)
             if self.body.velocity.length < 5:
                 self.reverse = 1
-
-        elif keys[pygame.K_DOWN]:  # Move backward
+              
+        elif keys[self.controllerKeys[1]]:  # Move backward
             if self.reverse == -1:
                 self.body.apply_impulse_at_local_point(-self.impulse)
             else:
@@ -118,22 +122,22 @@ class Car:
             elif self.reverse == 1:
                 self.body.apply_impulse_at_local_point(-self.impulse * BRAKE_SPEED)
         else:
-            # Simulates deceleration when no movement command is given
+            #Simulates deceleration when no movement command is given
             self.body.velocity = (self.body.velocity.length - FREE_DECELERATION) * self.forward_direction * self.reverse
-
-        # Turning the car
+        
+        #Turning the car
         self.turning_radius = CAR_SIZE[0] / sin(radians(CAR_TURN))
-        if keys[pygame.K_LEFT]:  # Turn left
+        if keys[self.controllerKeys[2]]:  # Turn left
             self.body.angular_velocity = self.body.velocity.length / -self.turning_radius * self.reverse
-        elif keys[pygame.K_RIGHT]:  # Turn right
+        elif keys[self.controllerKeys[3]]:  # Turn right
             self.body.angular_velocity = self.body.velocity.length / self.turning_radius * self.reverse
         else:
             self.body.angular_velocity = 0  # Stop turning when no key is pressed
-
+        
         # Reset drift: Set velocity to only move in the direction of the car's facing angle
         self.body.velocity = self.forward_direction * self.reverse * min(self.body.velocity.length, MAX_SPEED)
-        # Prints current velocity
-        # print("\rVelocity:{:0.2f}".format(self.body.velocity.length),end="")
+        #Prints current velocity
+        #print("\rVelocity:{:0.2f}".format(self.body.velocity.length),end="")
 
     def update(self, controls: tuple[float, float]):
         """Calculates the needed motion of the car class called. Takes tuples which will be transmitted through ros messages for controls.
