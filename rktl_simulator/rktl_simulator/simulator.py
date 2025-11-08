@@ -96,7 +96,9 @@ class Car:
 
     #this function is very new and tentative, maybe dont use it
     def changeThrottle(self, throttle, direction):
-        self.body.angular_velocity = throttle * tan(direction)((self.body.velocity)/(WHEELBASE))
+        self.body.angular_velocity = tan(direction)((self.body.velocity)/(WHEELBASE))
+        for i in self.body.velocity.length:
+            self.body.velocity[i] = self.body.velocity[i] * throttle
 
     def keyUpdate(self, keys:pygame.key.ScancodeWrapper):
         """Calculates the needed motion of the car class called. Takes user keyboard inputs for controls
