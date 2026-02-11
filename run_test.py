@@ -2,7 +2,7 @@ from stable_baselines3 import PPO
 from car_env import CarSoccerEnv
 
 env = CarSoccerEnv(render_mode="human")
-model = PPO.load("car_ai_model", device="cuda")
+model = PPO.load("car_ai_model")
 
 obs, _ = env.reset()
 
