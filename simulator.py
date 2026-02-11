@@ -27,7 +27,9 @@ FREE_DECELERATION = 0.5  # Rate velocity decreases with no input
 CAR_FRICTION = 0.5
 CAR_COLOR = pygame.Color("green")
 CAR_COLOR_ALT = pygame.Color("red")
-CAR_POS = [[True, (FIELD_WIDTH + GOAL_DEPTH) / 3,FIELD_HEIGHT / 2],[False, 2 * (FIELD_WIDTH + GOAL_DEPTH) / 3,FIELD_HEIGHT / 2,180]]
+# CAR_POS = [[True, (FIELD_WIDTH + GOAL_DEPTH) / 3,FIELD_HEIGHT / 2],[False, 2 * (FIELD_WIDTH + GOAL_DEPTH) / 3,FIELD_HEIGHT / 2,180]]
+CAR_POS = [[True, (FIELD_WIDTH + GOAL_DEPTH) / 3,FIELD_HEIGHT / 2]]
+
 
 #Ball Specs
 BALL_MASS = 0.1
@@ -258,12 +260,14 @@ class Game:
     def __init__(
         self,
         carStartList:list[tuple[bool, float, float, float] | tuple[bool, float, float]] = CAR_POS,
-        ballPosition:tuple[float, float] = BALL_POS
+        ballPosition:tuple[float, float] = BALL_POS,
+        render = True
     ):
         """Constructor method"""
         pygame.init()
-        self.screen = pygame.display.set_mode((FIELD_WIDTH + GOAL_DEPTH, FIELD_HEIGHT))
-        self.draw_options = pymunk.pygame_util.DrawOptions(self.screen)
+        if render:
+            self.screen = pygame.display.set_mode((FIELD_WIDTH + GOAL_DEPTH, FIELD_HEIGHT))
+            self.draw_options = pymunk.pygame_util.DrawOptions(self.screen)
         self.clock = pygame.time.Clock()
 
         self.leftscore = 0
@@ -305,7 +309,10 @@ class Game:
         for c in self.cars:
             self.gameSpace.remove(c.body, c.shape)
         self.cars = []
-        self.gameSpace.remove(self.ball.body, self.ball.shape)
+        try:
+            self.gameSpace.remove(self.ball.body, self.ball.shape)
+        except AttributeError:
+            pass
         self.addDefaultObjects()
 
     def addDefaultObjects(self) -> None:

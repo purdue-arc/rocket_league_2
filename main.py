@@ -1,6 +1,6 @@
 from ai_training_testing_onefile import AITesting, AITraining
 from simulator import Game
-import perception
+# import perception
 import threading
 from queue import Queue
 
