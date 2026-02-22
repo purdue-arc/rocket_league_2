@@ -8,6 +8,7 @@ obs, _ = env.reset()
 
 while True:
     action, _states = model.predict(obs, deterministic=True)
+    print(action)
     obs, reward, terminated, truncated, info = env.step(action)
     if terminated or truncated:
         obs, _ = env.reset()

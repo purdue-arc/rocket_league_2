@@ -7,18 +7,23 @@ from event import Message
 
 from queue import Queue
 
+# 7ft by 5ft
+# random ass goal height
+
 #Field Specs
-FIELD_WIDTH = 426.72
-FIELD_HEIGHT = 304.8
-GOAL_HEIGHT = 81.28
-GOAL_DEPTH = 25.4
+FIELD_WIDTH = 1000.36
+FIELD_HEIGHT = 800.4
+GOAL_HEIGHT = 50
+GOAL_DEPTH = 25
 SIDE_WALL = (FIELD_HEIGHT - GOAL_HEIGHT) / 2
 FIELD_FRICTION = 0.3
 FIELD_ELASTICITY = 0.5
 FIELD_COLOR = pygame.Color("white")
 
+# 120 mm 142.212 mm
+
 #Car Specs
-CAR_SIZE = (16.5, 8.5) # (Length, Width)
+CAR_SIZE = (15, 12) # (Length, Width)
 CAR_MASS = 5
 CAR_SPEED = 5  # Impulse applied for forward/backward movement
 CAR_TURN = 30  # Angular velocity for car turning
@@ -41,7 +46,7 @@ BALL_DECELERATION = 0.1
 BALL_COLOR = pygame.Color("blue")
 
 #Sim Limits
-MAX_SPEED = 200 # Max speed limit of the cars
+MAX_SPEED = 10 # Max speed limit of the cars
 
 class Car:
     """Class used to define each car in the simulator.
