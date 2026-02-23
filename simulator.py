@@ -4,6 +4,7 @@ import pygame
 import pymunk
 import pymunk.pygame_util
 from event import Message
+import random
 
 from queue import Queue
 
@@ -11,8 +12,8 @@ from queue import Queue
 # random ass goal height
 
 #Field Specs
-FIELD_WIDTH = 1000.36
-FIELD_HEIGHT = 800.4
+FIELD_WIDTH = 1000
+FIELD_HEIGHT = 800
 GOAL_HEIGHT = 50
 GOAL_DEPTH = 25
 SIDE_WALL = (FIELD_HEIGHT - GOAL_HEIGHT) / 2
@@ -322,7 +323,10 @@ class Game:
 
     def addDefaultObjects(self) -> None:
         """Adds new ball and car objects to the field according to the contents of self.carStartList"""
-        self.ball = Ball(self.ballPosition[0], self.ballPosition[1], self.gameSpace)
+        rand_x = random.uniform(GOAL_DEPTH + 50, FIELD_WIDTH - GOAL_DEPTH - 50)
+        rand_y = random.uniform(50, SIDE_WALL - 50)
+        self.ball = Ball(rand_x, rand_y, self.gameSpace)
+
         multiControlList = [(pygame.K_UP, pygame.K_DOWN, pygame.K_LEFT, pygame.K_RIGHT), (pygame.K_w, pygame.K_s, pygame.K_a, pygame.K_d)]
         for i, c in enumerate(self.carStartList): #loops through list of start cars, creates new car object for each car listed
             self.inputs.append([0,0]) #reset's car controls
