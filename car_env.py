@@ -19,14 +19,53 @@ class CarSoccerEnv(gym.Env):
 
         self.action_space = spaces.Box(low=-1, high=1, shape=(2,), dtype=np.float32)
 
-        # 10 dim: carX, carY, carAng, carXVel, carYVel, ballX, ballY, ballXVel, ballYVel, angle_error
-        self.observation_space = spaces.Box(low=-np.inf, high=np.inf, shape=(10,), dtype=np.float32)
+        self.grid_size = (20, 20)  # Resolution of your boxes
+        
+        # 5 Channels: 
+        # 0: Car Pos, 1: Ball Pos, 2: Car Velocity (Norm), 3: Car Angle, 4: Ball Velocity
+        self.observation_space = spaces.Box(
+            low=-1, 
+            high=1, 
+            shape=(5, self.grid_size[0], self.grid_size[1]), 
+            dtype=np.float32
+        )
 
         self.rewardInfo = {'amtTouch': 0, 'prevDist': -1.0, 'prevAngleError': None, 'time': 0}
 
         self.physics_steps_per_gym_step = 1
         self.dt = 0.1 / self.physics_steps_per_gym_step
 
+    def _get_obs(self, throttle=None):
+        grid = np.zeros((5, self.grid_size[0], self.grid_size[1]), dtype=np.float32)
+        
+        car = self.game.cars[0]
+        ball = self.game.ball
+
+        # Map world coordinates to grid indices
+        def to_grid(pos_x, pos_y):
+            # Normalizing based on FIELD_WIDTH and HEIGHT from simulator.py
+            col = int((pos_x / (FIELD_WIDTH + GOAL_DEPTH)) * (self.grid_size[1] - 1))
+            row = int((pos_y / FIELD_HEIGHT) * (self.grid_size[0] - 1))
+            return np.clip(row, 0, self.grid_size[0]-1), np.clip(col, 0, self.grid_size[1]-1)
+
+        c_r, c_c = to_grid(car.getPos().x, car.getPos().y)
+        b_r, b_c = to_grid(ball.getPos().x, ball.getPos().y)
+
+        # Layer 0 & 1: Discrete Positions
+        grid[0, c_r, c_c] = 1.0
+        grid[1, b_r, b_c] = 1.0
+        
+        # Layer 2: Car Velocity (Scalar intensity at the car's location)
+        grid[2, c_r, c_c] = car.getVelocity().length / MAX_SPEED
+        
+        # Layer 3: Car Angle (Normalized -1 to 1 at the car's location)
+        grid[3, c_r, c_c] = np.radians(car.getAngle()) / np.pi
+        
+        # Layer 4: Ball Velocity
+        grid[4, b_r, b_c] = ball.getVelocity().length / MAX_SPEED
+
+        return grid
+    
     def _compute_angle_error(self, throttle=None):
         """
         Compute the minimum angle the car must turn to face the ball,
@@ -59,25 +98,6 @@ class CarSoccerEnv(gym.Env):
 
         return angle_error
 
-    def _get_obs(self, throttle=None):
-        car = self.game.cars[0]
-        ball = self.game.ball
-
-        angle_error = self._compute_angle_error(throttle)
-
-        return np.array([
-            (car.getPos().x / FIELD_WIDTH) * 2 - 1,
-            (car.getPos().y / FIELD_HEIGHT) * 2 - 1,
-            (car.getAngle() / CAR_TURN) * 2 - 1,
-            (car.getVelocity().x / MAX_SPEED) * 2 - 1,
-            (car.getVelocity().y / MAX_SPEED) * 2 - 1,
-            (ball.getPos().x / FIELD_WIDTH) * 2 - 1,
-            (ball.getPos().y / FIELD_HEIGHT) * 2 - 1,
-            (ball.getVelocity().x / MAX_SPEED) * 2 - 1,
-            (ball.getVelocity().y / MAX_SPEED) * 2 - 1,
-            angle_error / np.pi,  # normalized -1 to 1
-        ], dtype=np.float32)
-
     def reset(self, seed=None, options=None):
         super().reset(seed=seed)
         self.rewardInfo = {'amtTouch': 0, 'prevDist': -1, 'prevAngleError': None, 'time': 0}
@@ -90,70 +110,75 @@ class CarSoccerEnv(gym.Env):
 
         self.game.inputs[0] = [throttle, steer]
 
+        # 1. Step the physics simulation
         for _ in range(self.physics_steps_per_gym_step):
             self.game.cars[0].update(self.game.inputs[0])
             self.game.gameSpace.step(self.dt)
 
+        # 2. Get the new spatial observation (The 3D "Boxes" grid)
         obs = self._get_obs(throttle=throttle)
-        carX, carY, carAng, carXVel, carYVel, ballX, ballY, ballXVel, ballYVel, angle_error_norm = obs
+
+        # 3. Calculate metrics directly from the simulation for rewards
+        car = self.game.cars[0]
+        ball = self.game.ball
+        car_pos = car.getPos()
+        ball_pos = ball.getPos()
+        
+        dist_world = np.linalg.norm([car_pos.x - ball_pos.x, car_pos.y - ball_pos.y])
+        angle_error = self._compute_angle_error(throttle)
 
         reward = 0
         terminated = False
 
-        car_pos = self.game.cars[0].getPos()
-        ball_pos = self.game.ball.getPos()
-        dist_world = np.linalg.norm([car_pos.x - ball_pos.x, car_pos.y - ball_pos.y])
-
-        angle_error = angle_error_norm * np.pi  # back to radians
-
-        # --- Reward angle error improvement ---
-        if self.rewardInfo['prevAngleError'] is not None:
-            angle_delta = abs(self.rewardInfo['prevAngleError']) - abs(angle_error)
-            if angle_delta > 0:
-                reward += 10.0   # turning toward ball
-            else:
-                reward -= 5.0   # punish turning away (softer)
+        # --- GOAL: Drive toward the ball ---
         
-        reward -= abs(angle_error) / np.pi * 5.0 
-
-        self.rewardInfo['prevAngleError'] = angle_error
-
-        # --- Reward distance improvement ---
+        # Reward 1: Distance Improvement (Progress)
         if self.rewardInfo['prevDist'] >= 0:
-            if self.rewardInfo['prevDist'] > dist_world:
-                reward += 1.0
-            else:
-                reward -= 5.0
-
+            # Positive reward for getting closer, negative for moving away
+            dist_delta = self.rewardInfo['prevDist'] - dist_world
+            reward += dist_delta * 2.0  # Weighted to encourage movement
+        
         self.rewardInfo['prevDist'] = dist_world
-        self.rewardInfo['time'] += 1
 
-        if(abs(throttle) < 0.05):
+        # Reward 2: Directional Alignment
+        # Reward the agent for facing the ball, especially when throttle is applied
+        alignment = np.cos(angle_error)
+        if throttle > 0:
+            reward += alignment * throttle * 5.0 # High reward for driving toward the ball
+
+        # Reward 3: Speed Incentive
+        # Punish idling to prevent the car from sitting still
+        if abs(throttle) < 0.1:
+            reward -= 5.0
+
+        # --- Termination Logic ---
+
+        # Success: Touching the ball
+        if dist_world < 25: 
+            reward += 500.0
+            terminated = True
+
+        # Failure: Out of Bounds
+        # (Using normalized coordinates for boundary check)
+        norm_x = (car_pos.x / (FIELD_WIDTH + GOAL_DEPTH)) * 2 - 1
+        norm_y = (car_pos.y / FIELD_HEIGHT) * 2 - 1
+        if not (-0.95 < norm_x < 0.95) or not (-0.95 < norm_y < 0.95):
             reward -= 100.0
-
-        # --- Touch reward ---
-        if dist_world < 20:
-            self.rewardInfo['amtTouch'] += 1
-            reward += 1000
             terminated = True
 
-        # --- Out of bounds ---
-        if not(-0.9 < carX < 0.9) or not(-0.9 < carY < 0.9):
-            reward -= 100
-            terminated = True
-
-        # --- Timeout ---
-        if self.rewardInfo['time'] > 1_000:
-            reward -= 100
-            terminated = True
-
+        # Failure: Timeout
+        self.rewardInfo['time'] += 1
         reward -= 1
+        if self.rewardInfo['time'] > 500:
+            terminated = True
+            reward -= 100
+
+        # Constant pressure to finish quickly
+        reward -= 0.5
 
         if self.render_mode == "human":
             self.render()
-            print('Distance:', dist_world)
-            print('Angle error (deg):', np.degrees(angle_error))
-            print('Current Reward:', reward)
+            print(f'Dist: {dist_world:.1f} | Angle Err: {np.degrees(angle_error):.1f} | Reward: {reward:.2f}')
             time.sleep(0.01)
 
         return obs, reward, terminated, False, {}
