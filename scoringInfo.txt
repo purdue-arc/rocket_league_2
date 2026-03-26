@@ -1,0 +1,7 @@
+Generate a Spline using 3 points: Car, Ball, Center of Goal
+If spline is inbounds and turning radius is not extremely sharp then let car follow path
+If Turning radius is too sharp ball to goal let car hit ball towards goal lightly and then recalculate path
+If turning radius is too sharp car to ball let car reposition laterally and then recalculate path
+
+If spline is out of bounds on ball to goal, then hit ball lightly, and recalculate path
+If spline is out of bounds on car to ball, then repsotion laterally and then recalculate path
