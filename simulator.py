@@ -38,12 +38,12 @@ CAR_POS = [[True, (FIELD_WIDTH + GOAL_DEPTH) / 3,FIELD_HEIGHT / 2]]
 
 
 #Ball Specs
-BALL_MASS = 0.1
+BALL_MASS = 10
 BALL_RADIUS = 6.85 / 2
 BALL_POS = (FIELD_WIDTH + GOAL_DEPTH) / 2, FIELD_HEIGHT / 2 # Starting position of the ball (x, y)
-BALL_ELASTICITY = 1
-BALL_FRICTION = 0.5
-BALL_DECELERATION = 0.1
+BALL_ELASTICITY = 1.0
+BALL_FRICTION = 0.2
+BALL_DECELERATION = 0.2
 BALL_COLOR = pygame.Color("blue")
 
 #Sim Limits
@@ -324,7 +324,7 @@ class Game:
     def addDefaultObjects(self) -> None:
         """Adds new ball and car objects to the field according to the contents of self.carStartList"""
         rand_x = random.uniform(GOAL_DEPTH + 50, FIELD_WIDTH - GOAL_DEPTH - 50)
-        rand_y = random.uniform(50, SIDE_WALL - 50)
+        rand_y = random.uniform(50, FIELD_HEIGHT - 50)
         self.ball = Ball(rand_x, rand_y, self.gameSpace)
 
         multiControlList = [(pygame.K_UP, pygame.K_DOWN, pygame.K_LEFT, pygame.K_RIGHT), (pygame.K_w, pygame.K_s, pygame.K_a, pygame.K_d)]
